@@ -47,10 +47,6 @@ public:
 	void RedSystemMessage(const char *message, ...);
 	void GreenSystemMessage(const char *message, ...);
 	void BlueSystemMessage(const char *message, ...);
-	void RedSystemMessageToPlr(Player* plr, const char *message, ...);
-	void GreenSystemMessageToPlr(Player* plr, const char *message, ...);
-	void BlueSystemMessageToPlr(Player* plr, const char *message, ...);
-	void SystemMessageToPlr(Player *plr, const char *message, ...);
 
 protected:
 	bool hasStringAbbr(const char* name, const char* part);
