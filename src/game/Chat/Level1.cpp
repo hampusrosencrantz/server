@@ -70,7 +70,7 @@ bool ChatHandler::HandleGPSCommand(const char* args)
 	if (!obj)
 	{
 		SystemMessage("You should select a character or a creature.");
-		return false;
+		return true;
 	}
 
 	char buf[256];
@@ -88,7 +88,7 @@ bool ChatHandler::HandleKickCommand(const char* args)
 	if (!kickName)
 	{
 		RedSystemMessage("No name specified.");
-		return false;
+		return true;
 	}
 
 	Player *player = sObjectMgr.GetPlayer((const char*)kickName);
@@ -135,7 +135,7 @@ bool ChatHandler::HandleAddInvItemCommand(const char *args)
 	if (dest.empty())
 	{
 		m_session->SendNotification("No free slots were found in your inventory!");
-		return false;
+		return true;
 	}
 
 	Item* item = pl->StoreNewItem(dest, itemid, true, Item::GenerateItemRandomPropertyId(itemid));
@@ -303,18 +303,214 @@ bool ChatHandler::HandleModifySpeedCommand(const char* args)
 	chr->UpdateSpeed(MOVE_RUN, true, Speed);
 	chr->UpdateSpeed(MOVE_SWIM, true, Speed);
 	chr->UpdateSpeed(MOVE_FLIGHT, true, Speed);
-
 	return true;
 }
 
-bool ChatHandler::HandleMaxSkillCommand(const char* args)
+bool ChatHandler::HandleLearnSkillCommand(const char *args)
 {
-	Player* SelectedPlayer = getSelectedPlayer();
-	if (!SelectedPlayer)
+	uint32 skill, min, max;
+	min = max = 1;
+	char *pSkill = strtok((char*)args, " ");
+	if (!pSkill)
+		return false;
+	else
+		skill = atol(pSkill);
+
+	char *pMin = strtok(NULL, " ");
+	if (pMin)
+	{
+		min = atol(pMin);
+		char *pMax = strtok(NULL, "\n");
+		if (pMax)
+			max = atol(pMax);
+	}
+	else {
+		return false;
+	}
+
+	Player * target = getSelectedPlayer();
+	if (!target)
 		return false;
 
-	// each skills that have max skill value dependent from level seted to current level max skill value
-	SelectedPlayer->UpdateSkillsToMaxSkillsForLevel();
+	SkillLineEntry const* sl = sSkillLineStore.LookupEntry(skill);
+	if (!sl)
+		return false;
+
+	target->SetSkill(skill, min, max);
+	BlueSystemMessage("Adding skill line %d", skill);
 	return true;
 }
 
+bool ChatHandler::HandleModifySkillCommand(const char *args)
+{
+	uint32 skill, min, max;
+	min = max = 1;
+	char *pSkill = strtok((char*)args, " ");
+	if (!pSkill)
+		return false;
+	else
+		skill = atol(pSkill);
+
+	char *pMin = strtok(NULL, " ");
+	uint32 cnt = 0;
+	if (!pMin)
+		cnt = 1;
+	else
+		cnt = atol(pMin);
+
+	skill = atol(pSkill);
+
+	Player * target = getSelectedPlayer();
+	if (!target)
+		return false;
+
+	SkillLineEntry const* sl = sSkillLineStore.LookupEntry(skill);
+	if (!sl)
+		return false;
+
+	BlueSystemMessage("Modifying skill line %d. Advancing %d times.", skill, cnt);
+	if (!target->HasSkill(skill))
+		SystemMessage("Does not have skill line, adding.");
+
+	target->SetSkill(skill, min, max);
+	return true;
+}
+
+bool ChatHandler::HandleRemoveSkillCommand(const char *args)
+{
+	uint32 skill = 0;
+	char *pSkill = strtok((char*)args, " ");
+	if (!pSkill)
+		return false;
+	else
+		skill = atol(pSkill);
+	BlueSystemMessage("Removing skill line %d", skill);
+
+	Player * target = getSelectedPlayer();
+	if (!target)
+		return false;
+
+	SkillLineEntry const* sl = sSkillLineStore.LookupEntry(skill);
+	if (!sl)
+		return false;
+
+	BlueSystemMessage("Removing skill line %d", skill);
+	target->removeSpell(skill);
+	ChatHandler(target).SystemMessage("%s removed skill line %d from you. ", m_session->GetPlayer()->GetName(), skill);
+	return true;
+}
+
+bool ChatHandler::HandleEmoteCommand(const char* args)
+{
+	uint32 emote = atoi((char*)args);
+
+	Creature* target = getSelectedCreature();
+	if (!target)
+		return false;
+
+	target->SetUInt32Value(UNIT_NPC_EMOTESTATE, emote);
+	return true;
+}
+
+bool ChatHandler::HandleModifyGoldCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	int32 gold = atoi((char*)args);
+
+	Player *chr = getSelectedPlayer();
+	if (!chr)
+		return false;
+
+	BlueSystemMessage("Adding %d gold to %s's backpack...", gold, chr->GetName());
+
+	int32 currentgold = chr->GetMoney();
+	int32 newgold = currentgold + gold;
+
+	if (newgold < 0)
+	{
+		ChatHandler(chr).GreenSystemMessage("%s took the all gold from your backpack.", m_session->GetPlayer()->GetName());
+		chr->SetMoney(0);
+	}
+	else
+	{
+		if (newgold > currentgold)
+		{
+			ChatHandler(chr).GreenSystemMessage("%s took %d gold to your backpack.", m_session->GetPlayer()->GetName(), abs(gold));
+			chr->SetMoney(gold);
+		}
+		else
+		{
+			ChatHandler(chr).GreenSystemMessage("%s added %d gold from your backpack.", m_session->GetPlayer()->GetName(), abs(gold));
+			chr->SetMoney(newgold);
+		}
+	}
+
+	return true;
+}
+
+bool ChatHandler::HandleTriggerCommand(const char* args)
+{
+	Player* _player = m_session->GetPlayer();
+
+	if (!*args)
+		return false;
+
+	char *atId = strtok((char*)args, " ");
+	if (!atId)
+		return false;
+
+	int32 i_atId = atoi(atId);
+
+	if (!i_atId)
+		return false;
+
+	AreaTriggerEntry const* at = sAreaTriggerStore.LookupEntry(i_atId);
+	if (!at)
+	{
+		RedSystemMessage("Could not find trigger %s", (args == NULL ? "NULL" : args));
+		return true;
+	}
+
+	_player->TeleportTo(at->mapid, at->x, at->y, at->z, _player->GetOrientation());
+	BlueSystemMessage("Teleported to trigger %u on [%u][%.2f][%.2f][%.2f]", at->id,
+		at->mapid, at->x, at->y, at->z);
+	return true;
+}
+
+bool ChatHandler::HandleUnlearnCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	Player *target = getSelectedPlayer();
+
+	if (!target)
+		return true;
+
+	uint32 spell = atol(args);
+	if (spell == 0)
+	{
+		RedSystemMessage("You must specify a spell id.");
+		return true;
+	}
+
+	if (target->HasSpell(spell))
+	{
+		ChatHandler(target).GreenSystemMessage("Removed spell %u.", spell);
+		target->removeSpell(spell);
+	}
+	else
+	{
+		RedSystemMessage("That player does not have spell %u learnt.", spell);
+	}
+
+	return true;
+}
+
+bool ChatHandler::HandleNpcSpawnLinkCommand(const char* args)
+{
+	RedSystemMessage("Not yet implemented.");
+	return true;
+}
