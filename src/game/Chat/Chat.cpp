@@ -406,12 +406,12 @@ bool ChatHandler::CmdSetValueField(WorldSession *m_session, uint32 field, uint32
 		if (fieldmax)
 		{
 			BlueSystemMessage("You set the %s of %s to %d/%d.", fieldname, plr->GetName(), av, mv);
-			GreenSystemMessageToPlr(plr, "%s set your %s to %d/%d.", m_session->GetPlayer()->GetName(), fieldname, av, mv);
+			ChatHandler(plr).GreenSystemMessage("%s set your %s to %d/%d.", m_session->GetPlayer()->GetName(), fieldname, av, mv);
 		}
 		else
 		{
 			BlueSystemMessage("You set the %s of %s to %d.", fieldname, plr->GetName(), av);
-			GreenSystemMessageToPlr(plr, "%s set your %s to %d.", m_session->GetPlayer()->GetName(), fieldname, av);
+			ChatHandler(plr).GreenSystemMessage("%s set your %s to %d.", m_session->GetPlayer()->GetName(), fieldname, av);
 		}
 
 		if (field == UNIT_FIELD_STAT1) av /= 2;
@@ -505,12 +505,12 @@ bool ChatHandler::CmdSetFloatField(WorldSession *m_session, uint32 field, uint32
 		if (fieldmax)
 		{
 			BlueSystemMessage("You set the %s of %s to %.1f/%.1f.", fieldname, plr->GetName(), av, mv);
-			GreenSystemMessageToPlr(plr, "%s set your %s to %.1f/%.1f.", m_session->GetPlayer()->GetName(), fieldname, av, mv);
+			ChatHandler(plr).GreenSystemMessage("%s set your %s to %.1f/%.1f.", m_session->GetPlayer()->GetName(), fieldname, av, mv);
 		}
 		else
 		{
 			BlueSystemMessage("You set the %s of %s to %.1f.", fieldname, plr->GetName(), av);
-			GreenSystemMessageToPlr(plr, "%s set your %s to %.1f.", m_session->GetPlayer()->GetName(), fieldname, av);
+			ChatHandler(plr).GreenSystemMessage("%s set your %s to %.1f.", m_session->GetPlayer()->GetName(), fieldname, av);
 		}
 		plr->SetFloatValue(field, av);
 		if (fieldmax) plr->SetFloatValue(fieldmax, mv);

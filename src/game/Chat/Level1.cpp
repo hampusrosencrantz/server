@@ -305,6 +305,14 @@ bool ChatHandler::HandleModifySpeedCommand(const char* args)
 	return true;
 }
 
-bool ChatHandler::HandleModifySkillCommand(const char *args)
+bool ChatHandler::HandleMaxSkillCommand(const char* args)
 {
+	Player* SelectedPlayer = getSelectedPlayer();
+	if (!SelectedPlayer)
+		return false;
+
+	// each skills that have max skill value dependent from level seted to current level max skill value
+	SelectedPlayer->UpdateSkillsToMaxSkillsForLevel();
+	return true;
 }
+

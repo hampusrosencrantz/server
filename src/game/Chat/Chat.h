@@ -210,15 +210,12 @@ protected:
 	bool HandleGMTicketGetAllCommand(const char* args);
 	bool HandleGMTicketGetByIdCommand(const char* args);
 	bool HandleGMTicketDelByIdCommand(const char* args);
-	bool HandleAddSkillCommand(const char* args);
+	bool HandleMaxSkillCommand(const char* args);
 	bool HandleAddInvItemCommand(const char* args);
 	bool HandleWeatherCommand(const char* args);
 	bool HandleGetRankCommand(const char* args);
 	bool HandleSetRankCommand(const char* args);
 	bool HandleResetReputationCommand(const char* args);
-	bool HandleLearnSkillCommand(const char* args);
-	bool HandleModifySkillCommand(const char* args);
-	bool HandleRemoveSkillCommand(const char* args);
 	bool HandleNpcInfoCommand(const char* args);
 	bool HandleEmoteCommand(const char* args);
 	bool HandleIncreaseWeaponSkill(const char* args);
