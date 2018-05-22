@@ -157,3 +157,154 @@ bool ChatHandler::HandleAddInvItemCommand(const char *args)
 	return true;
 }
 
+bool ChatHandler::HandleSummonCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	Player *player = sObjectMgr.GetPlayer(args);
+	if (player)
+	{
+		// send message to user
+		char buf[256];
+		char buf0[256];
+		if (player->IsBeingTeleported() == true)
+		{
+			snprintf((char*)buf, 256, "%s is already being teleported.", player->GetName());
+			SystemMessage(buf);
+			return true;
+		}
+
+		snprintf((char*)buf, 256, "You are summoning %s.", player->GetName());
+		SystemMessage(buf);
+
+		if (m_session->GetPlayer()->IsVisibleGloballyFor(player))
+		{
+			// send message to player
+			snprintf((char*)buf0, 256, "You are being summoned by %s.", m_session->GetPlayer()->GetName());
+			ChatHandler(player).SystemMessage(buf0);
+		}
+
+		if (!player->TaxiFlightInterrupt())
+			player->SaveRecallPosition();
+
+		// before GM
+		float x, y, z;
+		player->GetClosePoint(x, y, z, player->GetObjectBoundingRadius());
+		player->TeleportTo(player->GetMapId(), x, y, z, player->GetOrientation());
+	}
+	else
+	{
+		char buf[256];
+		snprintf((char*)buf, 256, "Player (%s) does not exist or is not logged in.", args);
+		SystemMessage(buf);
+	}
+
+	return true;
+}
+
+bool ChatHandler::HandleAppearCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	Player *player = sObjectMgr.GetPlayer(args);
+	if (player)
+	{
+		char buf[256];
+		if (player->IsBeingTeleported() == true)
+		{
+			snprintf((char*)buf, 256, "%s is already being teleported.", player->GetName());
+			SystemMessage(buf);
+			return true;
+		}
+
+		snprintf((char*)buf, 256, "Appearing at %s's location.", player->GetName());
+		SystemMessage(buf);
+
+		if (m_session->GetPlayer()->IsVisibleGloballyFor(player))
+		{
+			char buf0[256];
+			snprintf((char*)buf0, 256, "%s is appearing to your location.", m_session->GetPlayer()->GetName());
+			ChatHandler(player).SystemMessage(buf0);
+		}
+
+		// to point to see at target with same orientation
+		float x, y, z;
+		player->GetContactPoint(m_session->GetPlayer(), x, y, z);
+
+		m_session->GetPlayer()->TeleportTo(player->GetMapId(), x, y, z, m_session->GetPlayer()->GetAngle(player), TELE_TO_GM_MODE);
+	}
+	else
+	{
+		char buf[256];
+		snprintf((char*)buf, 256, "Player (%s) does not exist or is not logged in.", args);
+		SystemMessage(buf);
+	}
+
+	return true;
+}
+
+bool ChatHandler::HandleTaxiCheatCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	int flag = atoi((char*)args);
+
+	Player *chr = getSelectedPlayer();
+	if (!chr)
+		return false;
+
+	if (flag != 0)
+	{
+		chr->SetTaxiCheater(true);
+		GreenSystemMessage("%s has all taxi nodes now.", chr->GetName());
+		ChatHandler(chr).SystemMessage("%s has given you all taxi nodes.", m_session->GetPlayer()->GetName());
+		return true;
+	}
+	else
+	{
+		chr->SetTaxiCheater(false);
+		GreenSystemMessage("%s has no more taxi nodes now.", chr->GetName());
+		ChatHandler(chr).SystemMessage("%s has deleted all your taxi nodes.", m_session->GetPlayer()->GetName());
+		return true;
+	}
+
+	return false;
+}
+
+bool ChatHandler::HandleModifySpeedCommand(const char* args)
+{
+	if (!*args)
+		return false;
+
+	float Speed = (float)atof((char*)args);
+
+	if (Speed > 255 || Speed < 1)
+	{
+		RedSystemMessage("Incorrect value. Range is 1..255");
+		return true;
+	}
+
+	Player *chr = getSelectedPlayer();
+	if (!chr)
+		return true;
+
+	// send message to user
+	BlueSystemMessage("You set the speed to %2.2f of %s.", Speed, chr->GetName());
+
+	// send message to player
+	ChatHandler(chr).SystemMessage("%s set your speed to %2.2f.", m_session->GetPlayer()->GetName(), Speed);
+
+	chr->UpdateSpeed(MOVE_WALK, true, Speed);
+	chr->UpdateSpeed(MOVE_RUN, true, Speed);
+	chr->UpdateSpeed(MOVE_SWIM, true, Speed);
+	chr->UpdateSpeed(MOVE_FLIGHT, true, Speed);
+
+	return true;
+}
+
+bool ChatHandler::HandleModifySkillCommand(const char *args)
+{
+}
