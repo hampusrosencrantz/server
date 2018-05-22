@@ -26,7 +26,7 @@ ScriptedAI::ScriptedAI(Creature* creature) : CreatureAI(creature),
 /// This function shows if combat movement is enabled, overwrite for more info
 void ScriptedAI::GetAIInformation(ChatHandler& reader)
 {
-    reader.SystemMessage("ScriptedAI, combat movement is %s", reader.GetOnOffStr(IsCombatMovement()));
+    reader.SystemMessage("ScriptedAI, combat movement is %s", IsCombatMovement() ? "on" : "off");
 }
 
 /**

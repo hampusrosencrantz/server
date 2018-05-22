@@ -63,8 +63,8 @@ int CreatureEventAI::Permissible(const Creature* creature)
 void CreatureEventAI::GetAIInformation(ChatHandler& reader)
 {
     reader.SystemMessage(LANG_NPC_EVENTAI_PHASE, uint32(m_Phase));
-    reader.SystemMessage(LANG_NPC_EVENTAI_MOVE, reader.GetOnOffStr(!m_creature->hasUnitState(UNIT_STAT_NO_COMBAT_MOVEMENT)));
-    reader.SystemMessage(LANG_NPC_EVENTAI_COMBAT, reader.GetOnOffStr(m_meleeEnabled));
+    reader.SystemMessage(LANG_NPC_EVENTAI_MOVE, !m_creature->hasUnitState(UNIT_STAT_NO_COMBAT_MOVEMENT) ? "on" : "off");
+    reader.SystemMessage(LANG_NPC_EVENTAI_COMBAT, m_meleeEnabled ? "on" : "off");
 
     if (sLog.HasLogFilter(LOG_FILTER_EVENT_AI_DEV))         // Give some more details if in EventAI Dev Mode
         return;
