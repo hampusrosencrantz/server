@@ -1665,7 +1665,7 @@ ChatTagFlags Player::GetChatTag() const
         tag |= CHAT_TAG_AFK;
     if (isDND())
         tag |= CHAT_TAG_DND;
-    if (isGMChat())
+    if (isGameMaster())
         tag |= CHAT_TAG_GM;
     if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_COMMENTATOR))
         tag |= CHAT_TAG_COM;
@@ -6951,10 +6951,7 @@ void Player::UpdateArea(uint32 newArea)
     // FFA_PVP flags are area and not zone id dependent
     // so apply them accordingly
     if (area && (area->flags & AREA_FLAG_ARENA))
-    {
-        if (!isGameMaster())
-            SetPvPFreeForAll(true);
-    }
+        SetPvPFreeForAll(true);
     else
     {
         // remove ffa flag only if not ffapvp realm
@@ -6966,11 +6963,11 @@ void Player::UpdateArea(uint32 newArea)
     if (area)
     {
         // Dalaran restricted flight zone
-        if ((area->flags & AREA_FLAG_CANNOT_FLY) && IsFreeFlying() && !isGameMaster() && !HasAura(58600))
+        if ((area->flags & AREA_FLAG_CANNOT_FLY) && IsFreeFlying() && !HasAura(58600))
             CastSpell(this, 58600, TRIGGERED_OLD_TRIGGERED);                   // Restricted Flight Area
 
         // Wintergrasp parachute when battle in progress
-        if ((area->flags & AREA_FLAG_OUTDOOR_PVP) && IsFreeFlying() && !isGameMaster() && !HasAura(58730))
+        if ((area->flags & AREA_FLAG_OUTDOOR_PVP) && IsFreeFlying() && !HasAura(58730))
         {
             OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(GetCachedZoneId());
             if (outdoorPvP && outdoorPvP->IsBattlefield() && ((Battlefield*)outdoorPvP)->GetBattlefieldStatus() == BF_STATUS_IN_PROGRESS)
@@ -6983,13 +6980,12 @@ void Player::UpdateArea(uint32 newArea)
 
 bool Player::CanUseCapturePoint() const
 {
-    return isAlive() &&                                     // living
-           !HasStealthAura() &&                             // not stealthed
-           !HasInvisibilityAura() &&                        // visible
-           (IsPvP() || sWorld.IsPvPRealm()) &&
-           !HasMovementFlag(MOVEFLAG_FLYING) &&
-           !IsTaxiFlying() &&
-           !isGameMaster();
+	return isAlive() &&                                     // living
+		!HasStealthAura() &&                             // not stealthed
+		!HasInvisibilityAura() &&                        // visible
+		(IsPvP() || sWorld.IsPvPRealm()) &&
+		!HasMovementFlag(MOVEFLAG_FLYING) &&
+		!IsTaxiFlying();
 }
 
 void Player::UpdateZone(uint32 newZone, uint32 newArea)
@@ -15994,65 +15990,6 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     // all fields read
     delete result;
 
-    // GM state
-    if (GetSession()->GetSecurity() > SEC_PLAYER)
-    {
-        switch (sWorld.getConfig(CONFIG_UINT32_GM_LOGIN_STATE))
-        {
-            default:
-            case 0:                      break;             // disable
-            case 1: SetGameMaster(true); break;             // enable
-            case 2:                                         // save state
-                if (extraflags & PLAYER_EXTRA_GM_ON)
-                    SetGameMaster(true);
-                break;
-        }
-
-        switch (sWorld.getConfig(CONFIG_UINT32_GM_VISIBLE_STATE))
-        {
-            default:
-            case 0: SetGMVisible(false); break;             // invisible
-            case 1:                      break;             // visible
-            case 2:                                         // save state
-                if (extraflags & PLAYER_EXTRA_GM_INVISIBLE)
-                    SetGMVisible(false);
-                break;
-        }
-
-        switch (sWorld.getConfig(CONFIG_UINT32_GM_ACCEPT_TICKETS))
-        {
-            default:
-            case 0:                        break;           // disable
-            case 1: SetAcceptTicket(true); break;           // enable
-            case 2:                                         // save state
-                if (extraflags & PLAYER_EXTRA_GM_ACCEPT_TICKETS)
-                    SetAcceptTicket(true);
-                break;
-        }
-
-        switch (sWorld.getConfig(CONFIG_UINT32_GM_CHAT))
-        {
-            default:
-            case 0:                  break;                 // disable
-            case 1: SetGMChat(true); break;                 // enable
-            case 2:                                         // save state
-                if (extraflags & PLAYER_EXTRA_GM_CHAT)
-                    SetGMChat(true);
-                break;
-        }
-
-        switch (sWorld.getConfig(CONFIG_UINT32_GM_WISPERING_TO))
-        {
-            default:
-            case 0:                          break;         // disable
-            case 1: SetAcceptWhispers(true); break;         // enable
-            case 2:                                         // save state
-                if (extraflags & PLAYER_EXTRA_ACCEPT_WHISPERS)
-                    SetAcceptWhispers(true);
-                break;
-        }
-    }
-
     _LoadDeclinedNames(holder->GetResult(PLAYER_LOGIN_QUERY_LOADDECLINEDNAMES));
 
     m_achievementMgr.CheckAllAchievementCriteria();
@@ -19472,7 +19409,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorGuid, uint32 vendorslot, uin
         }
     }
 
-    if (crItem->conditionId && !isGameMaster() && !sObjectMgr.IsPlayerMeetToCondition(crItem->conditionId, this, pCreature->GetMap(), pCreature, CONDITION_FROM_VENDOR))
+    if (crItem->conditionId && !sObjectMgr.IsPlayerMeetToCondition(crItem->conditionId, this, pCreature->GetMap(), pCreature, CONDITION_FROM_VENDOR))
     {
         SendBuyError(BUY_ERR_CANT_FIND_ITEM, pCreature, item, 0);
         return false;
@@ -19593,8 +19530,7 @@ uint8 Player::GetHighestPvPRankIndex() const
 
 void Player::UpdateHomebindTime(uint32 time)
 {
-    // GMs never get homebind timer online
-    if (m_InstanceValid || isGameMaster())
+    if (m_InstanceValid)
     {
         if (m_HomebindTimer)                                // instance valid, but timer not reset
         {
@@ -19938,7 +19874,7 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
         bg->RemovePlayerAtLeave(GetObjectGuid(), teleportToEntryPoint, true);
 
         // call after remove to be sure that player resurrected for correct cast
-        if (bg->isBattleGround() && !isGameMaster() && sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_CAST_DESERTER))
+        if (bg->isBattleGround() && sWorld.getConfig(CONFIG_BOOL_BATTLEGROUND_CAST_DESERTER))
         {
             if (bg->GetStatus() == STATUS_IN_PROGRESS || bg->GetStatus() == STATUS_WAIT_JOIN)
             {
@@ -21958,8 +21894,6 @@ uint32 Player::CalculateTalentsPoints() const
 
 bool Player::CanStartFlyInArea(uint32 mapid, uint32 zone, uint32 area) const
 {
-    if (isGameMaster())
-        return true;
     // continent checked in SpellMgr::GetSpellAllowedInLocationError at cast and area update
     uint32 v_map = GetVirtualMapForMapAndZone(mapid, zone);
 
