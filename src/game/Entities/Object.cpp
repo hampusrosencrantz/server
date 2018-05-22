@@ -2379,7 +2379,7 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
             continue;
 
         cdLine << "GCD category" << "(" << cdItr.first << ") have " << durationStr.str() << " cd";
-        chat.PSendSysMessage("%s", cdLine.str().c_str());
+        chat.SystemMessage("%s", cdLine.str().c_str());
     }
 
     // print spell and category cd
@@ -2425,7 +2425,7 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
         }
 
         cdLine << "Spell" << "(" << cdItr.first << ") have " << durationStr.str() << " cd";
-        chat.PSendSysMessage("%s", cdLine.str().c_str());
+        chat.SystemMessage("%s", cdLine.str().c_str());
     }
 
     // print spell lockout
@@ -2446,9 +2446,9 @@ void WorldObject::PrintCooldownList(ChatHandler& chat) const
         else
             continue;
         cdLine << "LOCKOUT for " << schoolName[lockoutItr.first] << " with " << durationStr.str() << " remaining time cd";
-        chat.PSendSysMessage("%s", cdLine.str().c_str());
+        chat.SystemMessage("%s", cdLine.str().c_str());
     }
 
-    chat.PSendSysMessage("Found %u cooldown%s.", cdCount, (cdCount > 1) ? "s" : "");
-    chat.PSendSysMessage("Found %u permanent cooldown%s.", permCDCount, (permCDCount > 1) ? "s" : "");
+    chat.SystemMessage("Found %u cooldown%s.", cdCount, (cdCount > 1) ? "s" : "");
+    chat.SystemMessage("Found %u permanent cooldown%s.", permCDCount, (permCDCount > 1) ? "s" : "");
 }

@@ -26,7 +26,7 @@ ScriptedAI::ScriptedAI(Creature* creature) : CreatureAI(creature),
 /// This function shows if combat movement is enabled, overwrite for more info
 void ScriptedAI::GetAIInformation(ChatHandler& reader)
 {
-    reader.PSendSysMessage("ScriptedAI, combat movement is %s", reader.GetOnOffStr(IsCombatMovement()));
+    reader.SystemMessage("ScriptedAI, combat movement is %s", reader.GetOnOffStr(IsCombatMovement()));
 }
 
 /**
@@ -487,7 +487,7 @@ bool ScriptedAI::EnterEvadeIfOutOfCombatArea(const uint32 diff)
 
 void Scripted_NoMovementAI::GetAIInformation(ChatHandler& reader)
 {
-    reader.PSendSysMessage("Subclass of Scripted_NoMovementAI");
+    reader.SystemMessage("Subclass of Scripted_NoMovementAI");
 }
 
 void Scripted_NoMovementAI::AttackStart(Unit* who)

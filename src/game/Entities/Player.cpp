@@ -12891,7 +12891,7 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
 #ifdef BUILD_PLAYERBOT
                     if (botConfig.GetBoolDefault("PlayerbotAI.DisableBots", false) && !pCreature->isInnkeeper())
                     {
-                        ChatHandler(this).PSendSysMessage("|cffff0000Playerbot system is currently disabled!");
+                        ChatHandler(this).SystemMessage("|cffff0000Playerbot system is currently disabled!");
                         hasMenuItem = false;
                         break;
                     }
@@ -13185,7 +13185,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
                     if (!(m_session->GetSecurity() > SEC_PLAYER))
                         if (acctcharcount > maxnum)
                         {
-                            ChatHandler(this).PSendSysMessage("|cffff0000You cannot summon anymore bots. (Current Max: |cffffffff%u|cffff0000)", maxnum);
+                            ChatHandler(this).SystemMessage("|cffff0000You cannot summon anymore bots. (Current Max: |cffffffff%u|cffff0000)", maxnum);
                             delete resultchar;
                             return;
                         }
@@ -13201,7 +13201,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
                     if (!(m_session->GetSecurity() > SEC_PLAYER))
                         if (charlvl > maxlvl)
                         {
-                            ChatHandler(this).PSendSysMessage("|cffff0000You cannot summon |cffffffff[%s]|cffff0000, it's level is too high. (Current Max:lvl |cffffffff%u|cffff0000)", fields[1].GetString(), maxlvl);
+                            ChatHandler(this).SystemMessage("|cffff0000You cannot summon |cffffffff[%s]|cffff0000, it's level is too high. (Current Max:lvl |cffffffff%u|cffff0000)", fields[1].GetString(), maxlvl);
                             delete resultlvl;
                             return;
                         }
@@ -17693,7 +17693,7 @@ void Player::_SaveInventory()
     if (error)
     {
         sLog.outError("Player::_SaveInventory - one or more errors occurred save aborted!");
-        ChatHandler(this).SendSysMessage(LANG_ITEM_SAVE_FAILED);
+        ChatHandler(this).SystemMessage(LANG_ITEM_SAVE_FAILED);
         return;
     }
 
@@ -18456,7 +18456,7 @@ void Player::Whisper(const std::string& text, uint32 language, ObjectGuid receiv
     if (!isAcceptWhispers())
     {
         SetAcceptWhispers(true);
-        ChatHandler(this).SendSysMessage(LANG_COMMAND_WHISPERON);
+        ChatHandler(this).SystemMessage(LANG_COMMAND_WHISPERON);
     }
 
     // announce afk or dnd message
@@ -19209,7 +19209,7 @@ bool Player::OnTaxiFlightSplineUpdate()
 void Player::OnTaxiFlightRouteStart(uint32 pathID, bool initial)
 {
     if (IsTaxiDebug())
-        ChatHandler(this).PSendSysMessage(LANG_TAXI_DEBUG_PATH, pathID);
+        ChatHandler(this).SystemMessage(LANG_TAXI_DEBUG_PATH, pathID);
 
     if (initial)
     {
@@ -19239,9 +19239,9 @@ void Player::OnTaxiFlightRouteProgress(const TaxiPathNodeEntry* node, const Taxi
     if (IsTaxiDebug())
     {
         if (next)
-            ChatHandler(this).PSendSysMessage(LANG_TAXI_DEBUG_NODE, node->path, node->index, next->path, next->index);
+            ChatHandler(this).SystemMessage(LANG_TAXI_DEBUG_NODE, node->path, node->index, next->path, next->index);
         else
-            ChatHandler(this).PSendSysMessage(LANG_TAXI_DEBUG_NODE_FINAL, node->path, node->index);
+            ChatHandler(this).SystemMessage(LANG_TAXI_DEBUG_NODE_FINAL, node->path, node->index);
     }
 
     // Needs to be confirmed: first one shouldn't fire arrival event, final one shouldnt fire departure event?

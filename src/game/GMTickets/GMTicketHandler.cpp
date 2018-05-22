@@ -137,7 +137,7 @@ void WorldSession::HandleGMTicketCreateOpcode(WorldPacket& recv_data)
     for (HashMapHolder<Player>::MapType::const_iterator itr = m.begin(); itr != m.end(); ++itr)
     {
         if (itr->second->GetSession()->GetSecurity() >= SEC_GAMEMASTER && itr->second->isAcceptTickets())
-            ChatHandler(itr->second).PSendSysMessage(LANG_COMMAND_TICKETNEW, GetPlayer()->GetName());
+            ChatHandler(itr->second).SystemMessage(LANG_COMMAND_TICKETNEW, GetPlayer()->GetName());
     }
 }
 

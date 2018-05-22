@@ -294,6 +294,17 @@ Creature* ChatHandler::getSelectedCreature() const
 	return m_session->GetPlayer()->GetMap()->GetAnyTypeCreature(m_session->GetPlayer()->GetSelectionGuid());
 }
 
+void ChatHandler::SystemMessage(int32 entry, ...)
+{
+	const char *format = m_session->GetMangosString(entry);
+	va_list ap;
+	char str[1024];
+	va_start(ap, entry);
+	vsnprintf(str, 1024, format, ap);
+	va_end(ap);
+	SystemMessage(str);
+}
+
 void ChatHandler::SystemMessage(const char* message, ...)
 {
 	if (!message) return;

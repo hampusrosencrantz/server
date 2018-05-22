@@ -393,7 +393,7 @@ struct boss_illidan_stormrageAI : public ScriptedAI, private DialogueHelper
 
     void GetAIInformation(ChatHandler& reader) override
     {
-        reader.PSendSysMessage("Boss Illidan, current uiPhase = %u", m_uiPhase);
+        reader.SystemMessage("Boss Illidan, current uiPhase = %u", m_uiPhase);
     }
 
     void Aggro(Unit* /*pWho*/) override

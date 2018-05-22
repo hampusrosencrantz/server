@@ -76,6 +76,7 @@ public:
 
 	int ParseCommands(const char* text);
 
+	void SystemMessage(int32     entry, ...);
 	void SystemMessage(const char *message, ...);
 	void ColorSystemMessage(const char *colorcode, const char *message, ...);
 	void RedSystemMessage(const char *message, ...);

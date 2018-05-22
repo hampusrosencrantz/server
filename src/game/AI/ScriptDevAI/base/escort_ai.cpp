@@ -40,7 +40,7 @@ void npc_escortAI::GetAIInformation(ChatHandler& reader)
         m_creature->GetMotionMaster()->GetWaypointPathInformation(oss);
     }
 
-    reader.PSendSysMessage("%s", oss.str().c_str());
+    reader.SystemMessage("%s", oss.str().c_str());
 
     ScriptedAI::GetAIInformation(reader);
 }

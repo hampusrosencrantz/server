@@ -500,7 +500,7 @@ struct boss_kiljaedenAI : public Scripted_NoMovementAI, private DialogueHelper
 
     void GetAIInformation(ChatHandler& reader) override
     {
-        reader.PSendSysMessage("Kil'jaeden is currently in phase %u", uint32(m_uiPhase));
+        reader.SystemMessage("Kil'jaeden is currently in phase %u", uint32(m_uiPhase));
     }
 
     void JustDidDialogueStep(int32 iEntry) override

@@ -190,14 +190,14 @@ struct boss_brutallusAI : public ScriptedAI, private DialogueHelper
         if (m_pInstance)
         {
             if (m_pInstance->GetData(TYPE_BRUTALLUS) == SPECIAL)
-                reader.PSendSysMessage("Brutallus intro event is currently %s", m_bIsIntroInProgress ? "in progress" : "completed");
+                reader.SystemMessage("Brutallus intro event is currently %s", m_bIsIntroInProgress ? "in progress" : "completed");
             else
-                reader.PSendSysMessage("Brutallus intro event is currently %s", m_pInstance->GetData(TYPE_BRUTALLUS) == NOT_STARTED ? "not started" : "completed");
+                reader.SystemMessage("Brutallus intro event is currently %s", m_pInstance->GetData(TYPE_BRUTALLUS) == NOT_STARTED ? "not started" : "completed");
 
             if (m_pInstance->GetData(TYPE_BRUTALLUS) != NOT_STARTED)
             {
                 if (Creature* pMadrigosa = m_pInstance->GetSingleCreatureFromStorage(NPC_MADRIGOSA, true))
-                    reader.PSendSysMessage("Madrigosa guid is %s and has %u health.", pMadrigosa->GetObjectGuid().GetString().c_str(), pMadrigosa->GetHealth());
+                    reader.SystemMessage("Madrigosa guid is %s and has %u health.", pMadrigosa->GetObjectGuid().GetString().c_str(), pMadrigosa->GetHealth());
             }
         }
     }
