@@ -157,7 +157,7 @@ int Master::Run()
 #endif
     {
         ///- Launch CliRunnable thread
-        cliThread = new MaNGOS::Thread(new CliRunnable);
+//      cliThread = new MaNGOS::Thread(new CliRunnable);
     }
 
     ///- Handle affinity for multiple processors and process priority on Windows

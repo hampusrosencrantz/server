@@ -212,8 +212,11 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             uint32 pSecurity = player ? player->GetSession()->GetSecurity() : SEC_PLAYER;
             if (!player || (tSecurity == SEC_PLAYER && pSecurity > SEC_PLAYER && !player->isAcceptWhispers()))
             {
-                SendPlayerNotFoundNotice(to);
-                return;
+				std::string Reply = "This Game Master does not currently have an open ticket from you and did not receive your whisper. Please submit a new GM Ticket request if you need to speak to a GM. This is an automatic message.";
+				WorldPacket data;
+				ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER, Reply.c_str(), LANG_UNIVERSAL, player->GetChatTag(), player->GetObjectGuid(), player->GetName(), _player->GetObjectGuid(), _player->GetName());
+				SendPacket(data);
+				return;
             }
 
             if (!sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT) && tSecurity == SEC_PLAYER && pSecurity == SEC_PLAYER)

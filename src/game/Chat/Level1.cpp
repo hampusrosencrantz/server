@@ -78,6 +78,8 @@ bool ChatHandler::HandleGPSCommand(const char* args)
 		(unsigned int)obj->GetMapId(), obj->GetPositionX(), obj->GetPositionY(), obj->GetPositionZ(), obj->GetOrientation());
 
 	SystemMessage(buf);
+
+	return true;
 }
 
 bool ChatHandler::HandleKickCommand(const char* args)

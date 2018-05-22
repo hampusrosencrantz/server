@@ -40,18 +40,8 @@
 
 bool WorldSession::CheckMailBox(ObjectGuid guid) const
 {
-    // GM case
-    if (guid == GetPlayer()->GetObjectGuid())
-    {
-        // command case will return only if player have real access to command
-        if (!ChatHandler(GetPlayer()).FindCommand("mailbox"))
-        {
-            DEBUG_LOG("%s attempt open mailbox in cheating way.", guid.GetString().c_str());
-            return false;
-        }
-    }
     // mailbox case
-    else if (guid.IsGameObject())
+    if (guid.IsGameObject())
     {
         if (!GetPlayer()->GetGameObjectIfCanInteractWith(guid, GAMEOBJECT_TYPE_MAILBOX))
         {

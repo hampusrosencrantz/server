@@ -1,7 +1,9 @@
 #ifndef MANGOSSERVER_CHAT_H
 #define MANGOSSERVER_CHAT_H
 
+#include "Common.h"
 #include "Globals/SharedDefines.h"
+#include "Entities/ObjectGuid.h"
 
 #define MSG_COLOR_LIGHTRED	  "|cffff6060"
 #define MSG_COLOR_LIGHTBLUE	 "|cff00ccff"
@@ -15,7 +17,6 @@
 #define MSG_COLOR_MAGENTA	   "|cffff00ff"
 #define MSG_COLOR_YELLOW		"|cffffff00"
 #define MSG_COLOR_CYAN		  "|cff00ffff"
-
 
 class ChatCommand
 {
@@ -44,9 +45,9 @@ typedef uint32 ChatTagFlags;
 class ChatHandler
 {
 public:
-	explicit ChatHandler(WorldSession* session) : m_session(session) {}
-	explicit ChatHandler(Player* player) : m_session(player->GetSession()) {}
-	~ChatHandler() {}
+	explicit ChatHandler(WorldSession* session);
+	explicit ChatHandler(Player* player);
+	~ChatHandler();
 
 	/**
 	* \brief Prepare SMSG_GM_MESSAGECHAT/SMSG_MESSAGECHAT
@@ -75,6 +76,8 @@ public:
 		char const* channelName = nullptr, uint32 achievementId = 0);
 
 	int ParseCommands(const char* text);
+
+	bool isValidChatMessage(const char* msg) const;
 
 	void SystemMessage(int32     entry, ...);
 	void SystemMessage(const char *message, ...);

@@ -5973,7 +5973,7 @@ SpellCastResult Spell::CheckCast(bool strict)
 
                 bool gmmode = m_triggeredBySpellInfo == nullptr;
 
-                if (gmmode && !ChatHandler(plrCaster).FindCommand("npc tame"))
+                if (gmmode)
                 {
                     plrCaster->SendPetTameFailure(PETTAME_UNKNOWNERROR);
                     return SPELL_FAILED_DONT_REPORT;

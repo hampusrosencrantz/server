@@ -2013,7 +2013,7 @@ void World::UpdateSessions(uint32 /*diff*/)
 // This handles the issued and queued CLI/RA commands
 void World::ProcessCliCommands()
 {
-    std::lock_guard<std::mutex> guard(m_cliCommandQueueLock);
+/*    std::lock_guard<std::mutex> guard(m_cliCommandQueueLock);
 
     while (!m_cliCommandQueue.empty())
     {
@@ -2029,7 +2029,7 @@ void World::ProcessCliCommands()
             command->m_commandFinished(!handler.HasSentErrorMessage());
 
         delete command;
-    }
+    }*/
 }
 
 void World::InitResultQueue()

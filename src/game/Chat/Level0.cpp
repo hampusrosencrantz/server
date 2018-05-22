@@ -296,7 +296,7 @@ bool ChatHandler::HandleGMListCommand(const char* args)
 	HashMapHolder<Player>::MapType::iterator itr = m.begin();
 	for (; itr != m.end(); ++itr)
 	{
-		if (itr->second->GetSession()->GetSecurity && itr->second->isGameMaster())
+		if (itr->second->GetSession()->GetSecurity() && itr->second->isGameMaster())
 		{
 			if (first)
 				GreenSystemMessage("There are following active GMs on this server:");

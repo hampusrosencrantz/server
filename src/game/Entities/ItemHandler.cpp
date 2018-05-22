@@ -888,24 +888,11 @@ void WorldSession::HandleAutoStoreBagItemOpcode(WorldPacket& recv_data)
 
 bool WorldSession::CheckBanker(ObjectGuid guid) const
 {
-    // GM case
-    if (guid == GetPlayer()->GetObjectGuid())
-    {
-        // command case will return only if player have real access to command
-        if (!ChatHandler(GetPlayer()).FindCommand("bank"))
-        {
-            DEBUG_LOG("%s attempt open bank in cheating way.", guid.GetString().c_str());
-            return false;
-        }
-    }
     // banker case
-    else
+    if (!GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_BANKER))
     {
-        if (!GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_BANKER))
-        {
-            DEBUG_LOG("Banker %s not found or you can't interact with him.", guid.GetString().c_str());
-            return false;
-        }
+        DEBUG_LOG("Banker %s not found or you can't interact with him.", guid.GetString().c_str());
+        return false;
     }
 
     return true;
