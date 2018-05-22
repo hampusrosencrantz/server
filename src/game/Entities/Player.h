@@ -2393,6 +2393,17 @@ class Player : public Unit
             }
         }
 
+		void Kick(uint32 delay)
+		{
+			if (!delay)
+			{
+				m_kickTimer = 0;
+				GetSession()->LogoutPlayer(true);
+			}
+			else
+				m_kickTimer = delay;
+		}
+
     protected:
         /*********************************************************/
         /***               BATTLEGROUND SYSTEM                 ***/
@@ -2715,6 +2726,8 @@ class Player : public Unit
 
         std::unordered_map<uint32, TimePoint> m_enteredInstances;
         uint32 m_createdInstanceClearTimer;
+
+		uint32 m_kickTimer;
 };
 
 void AddItemsSetItem(Player* player, Item* item);

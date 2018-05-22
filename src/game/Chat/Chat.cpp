@@ -183,56 +183,80 @@ int ChatHandler::ParseCommands(const char* text)
 	return 1;
 }
 
-WorldPacket* ChatHandler::FillMessageData(uint32 type, uint32 language, const char* message, uint64 guid, uint8 flag) const
+void ChatHandler::BuildChatPacket(WorldPacket& data, ChatMsg msgtype, char const* message, Language language /*= LANG_UNIVERSAL*/, ChatTagFlags chatTag /*= CHAT_TAG_NONE*/,
+	ObjectGuid const& senderGuid /*= ObjectGuid()*/, char const* senderName /*= nullptr*/,
+	ObjectGuid const& targetGuid /*= ObjectGuid()*/, char const* targetName /*= nullptr*/,
+	char const* channelName /*= nullptr*/, uint32 achievementId /*= 0*/)
 {
-	//Packet    structure
-	//uint8	    type;
-	//uint32	language;
-	//uint64	guid;
-	//uint64	guid;
-	//uint32	len_of_text;
-	//char	    text[];		 // not sure ? i think is null terminated .. not null terminated
-	//uint8	    afk_state;
-	MANGOS_ASSERT(type != CHAT_MSG_CHANNEL);
-	//channels are handled in channel handler and so on
-	uint32 messageLength = (uint32)strlen(message) + 1;
+	const bool isGM = !!(chatTag & CHAT_TAG_GM);
+	bool isAchievement = false;
 
-	WorldPacket* data = new WorldPacket(SMSG_MESSAGECHAT, messageLength + 30);
+	data.Initialize(isGM ? SMSG_GM_MESSAGECHAT : SMSG_MESSAGECHAT);
+	data << uint8(msgtype);
+	data << uint32(language);
+	data << ObjectGuid(senderGuid);
+	data << uint32(0);                                              // 2.1.0
 
-	*data << (uint8)type;
-	*data << language;
+	switch (msgtype)
+	{
+	case CHAT_MSG_MONSTER_SAY:
+	case CHAT_MSG_MONSTER_PARTY:
+	case CHAT_MSG_MONSTER_YELL:
+	case CHAT_MSG_MONSTER_WHISPER:
+	case CHAT_MSG_MONSTER_EMOTE:
+	case CHAT_MSG_RAID_BOSS_WHISPER:
+	case CHAT_MSG_RAID_BOSS_EMOTE:
+	case CHAT_MSG_BATTLENET:
+	case CHAT_MSG_WHISPER_FOREIGN:
+		MANGOS_ASSERT(senderName);
+		data << uint32(strlen(senderName) + 1);
+		data << senderName;
+		data << ObjectGuid(targetGuid);                         // Unit Target
+		if (targetGuid && !targetGuid.IsPlayer() && !targetGuid.IsPet() && (msgtype != CHAT_MSG_WHISPER_FOREIGN))
+		{
+			data << uint32(strlen(targetName) + 1);             // target name length
+			data << targetName;                                 // target name
+		}
+		break;
+	case CHAT_MSG_BG_SYSTEM_NEUTRAL:
+	case CHAT_MSG_BG_SYSTEM_ALLIANCE:
+	case CHAT_MSG_BG_SYSTEM_HORDE:
+		data << ObjectGuid(targetGuid);                         // Unit Target
+		if (targetGuid && !targetGuid.IsPlayer())
+		{
+			MANGOS_ASSERT(targetName);
+			data << uint32(strlen(targetName) + 1);             // target name length
+			data << targetName;                                 // target name
+		}
+		break;
+	case CHAT_MSG_ACHIEVEMENT:
+	case CHAT_MSG_GUILD_ACHIEVEMENT:
+		data << ObjectGuid(targetGuid);                         // Unit Target
+		isAchievement = true;
+		break;
+	default:
+		if (isGM)
+		{
+			MANGOS_ASSERT(senderName);
+			data << uint32(strlen(senderName) + 1);
+			data << senderName;
+		}
 
-	*data << guid;
-	*data << uint32(0);
+		if (msgtype == CHAT_MSG_CHANNEL)
+		{
+			MANGOS_ASSERT(channelName);
+			data << channelName;
+		}
+		data << ObjectGuid(targetGuid);
+		break;
+	}
+	MANGOS_ASSERT(message);
+	data << uint32(strlen(message) + 1);
+	data << message;
+	data << uint8(chatTag);
 
-	*data << guid;
-
-	*data << messageLength;
-	*data << message;
-
-	*data << uint8(flag);
-	return data;
-}
-
-WorldPacket* ChatHandler::FillSystemMessageData(const char* message) const
-{
-	uint32 messageLength = (uint32)strlen(message) + 1;
-
-	WorldPacket* data = new WorldPacket(SMSG_MESSAGECHAT, 30 + messageLength);
-	*data << (uint8)CHAT_MSG_SYSTEM;
-	*data << (uint32)LANG_UNIVERSAL;
-
-	// Who cares about guid when there's no nickname displayed heh ?
-	*data << (uint64)0;
-	*data << (uint32)0;
-	*data << (uint64)0;
-
-	*data << messageLength;
-	*data << message;
-
-	*data << uint8(0);
-
-	return data;
+	if (isAchievement)
+		data << uint32(achievementId);
 }
 
 Player* ChatHandler::getSelectedPlayer() const
@@ -277,10 +301,9 @@ void ChatHandler::SystemMessage(const char* message, ...)
 	va_start(ap, message);
 	char msg1[1024];
 	vsnprintf(msg1, 1024, message, ap);
-	WorldPacket *data = FillSystemMessageData(msg1);
-	if (m_session != NULL)
-		m_session->SendPacket(*data);
-	delete data;
+	WorldPacket data;
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, msg1, LANG_UNIVERSAL, CHAT_TAG_NONE, m_session->GetPlayer()->GetObjectGuid());
+	m_session->SendPacket(data);
 }
 
 void ChatHandler::ColorSystemMessage(const char* colorcode, const char *message, ...)
@@ -292,10 +315,9 @@ void ChatHandler::ColorSystemMessage(const char* colorcode, const char *message,
 	vsnprintf(msg1, 1024, message, ap);
 	char msg[1024];
 	snprintf(msg, 1024, "%s%s|r", colorcode, msg1);
-	WorldPacket * data = FillSystemMessageData(msg);
-	if (m_session != NULL)
-		m_session->SendPacket(*data);
-	delete data;
+	WorldPacket data;
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, msg, LANG_UNIVERSAL, CHAT_TAG_NONE, m_session->GetPlayer()->GetObjectGuid());
+	m_session->SendPacket(data);
 }
 
 void ChatHandler::RedSystemMessage(const char *message, ...)
@@ -307,10 +329,9 @@ void ChatHandler::RedSystemMessage(const char *message, ...)
 	vsnprintf(msg1, 1024, message, ap);
 	char msg[1024];
 	snprintf(msg, 1024, "%s%s|r", MSG_COLOR_LIGHTRED/*MSG_COLOR_RED*/, msg1);
-	WorldPacket * data = FillSystemMessageData(msg);
-	if (m_session != NULL)
-		m_session->SendPacket(*data);
-	delete data;
+	WorldPacket data;
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, msg, LANG_UNIVERSAL, CHAT_TAG_NONE, m_session->GetPlayer()->GetObjectGuid());
+	m_session->SendPacket(data);
 }
 
 void ChatHandler::GreenSystemMessage(const char *message, ...)
@@ -322,10 +343,9 @@ void ChatHandler::GreenSystemMessage(const char *message, ...)
 	vsnprintf(msg1, 1024, message, ap);
 	char msg[1024];
 	snprintf(msg, 1024, "%s%s|r", MSG_COLOR_GREEN, msg1);
-	WorldPacket * data = FillSystemMessageData(msg);
-	if (m_session != NULL)
-		m_session->SendPacket(*data);
-	delete data;
+	WorldPacket data;
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, msg, LANG_UNIVERSAL, CHAT_TAG_NONE, m_session->GetPlayer()->GetObjectGuid());
+	m_session->SendPacket(data);
 }
 
 void ChatHandler::BlueSystemMessage(const char *message, ...)
@@ -337,10 +357,9 @@ void ChatHandler::BlueSystemMessage(const char *message, ...)
 	vsnprintf(msg1, 1024, message, ap);
 	char msg[1024];
 	snprintf(msg, 1024, "%s%s|r", MSG_COLOR_LIGHTBLUE, msg1);
-	WorldPacket * data = FillSystemMessageData(msg);
-	if (m_session != NULL)
-		m_session->SendPacket(*data);
-	delete data;
+	WorldPacket data;
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, msg, LANG_UNIVERSAL, CHAT_TAG_NONE, m_session->GetPlayer()->GetObjectGuid());
+	m_session->SendPacket(data);
 }
 
 bool ChatHandler::CmdSetValueField(WorldSession *m_session, uint32 field, uint32 fieldmax, const char *fieldname, const char *args)

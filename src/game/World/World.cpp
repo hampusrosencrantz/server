@@ -1762,6 +1762,21 @@ void World::SendDefenseMessage(uint32 zoneId, int32 textId)
     }
 }
 
+void World::SendWorldText(const char* text)
+{
+	WorldPacket data;
+
+	ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, text, LANG_UNIVERSAL);
+	SendGlobalMessage(data);
+}
+
+void World::SendWorldWideScreenText(const char *text)
+{
+	WorldPacket data(SMSG_AREA_TRIGGER_MESSAGE, 256);
+	data << (uint32)0 << text << (uint8)0x00;
+	SendGlobalMessage(data);
+}
+
 /// Kick (and save) all players
 void World::KickAll()
 {

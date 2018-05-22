@@ -30,6 +30,17 @@ public:
 	uint16			 ValueType;	// 0 = nothing, 1 = uint, 2 = float
 };
 
+enum PlayerChatTag
+{
+	CHAT_TAG_NONE = 0x00,
+	CHAT_TAG_AFK = 0x01,
+	CHAT_TAG_DND = 0x02,
+	CHAT_TAG_GM = 0x04,
+	CHAT_TAG_COM = 0x08,                     // Commentator
+	CHAT_TAG_DEV = 0x10,                     // Developer
+};
+typedef uint32 ChatTagFlags;
+
 class ChatHandler
 {
 public:
@@ -37,8 +48,31 @@ public:
 	explicit ChatHandler(Player* player) : m_session(player->GetSession()) {}
 	~ChatHandler() {}
 
-	WorldPacket* FillMessageData(uint32 type, uint32 language, const char* message, uint64 guid, uint8 flag = 0) const;
-	WorldPacket* FillSystemMessageData(const char* message) const;
+	/**
+	* \brief Prepare SMSG_GM_MESSAGECHAT/SMSG_MESSAGECHAT
+	*
+	* Method:    BuildChatPacket build message chat packet generic way
+	* FullName:  ChatHandler::BuildChatPacket
+	* Access:    public static
+	* Returns:   void
+	*
+	* \param WorldPacket& data             : Provided packet will be filled with requested info
+	* \param ChatMsg msgtype               : Message type from ChatMsg enum from SharedDefines.h
+	* \param ChatTagFlags chatTag          : Chat tag from PlayerChatTag in Chat.h
+	* \param char const* message           : Message to send
+	* \param Language language             : Language from Language enum in SharedDefines.h
+	* \param ObjectGuid const& senderGuid  : May be null in some case but often required for ignore list
+	* \param char const* senderName        : Required for type *MONSTER* or *BATTLENET, but also if GM is true
+	* \param ObjectGuid const& targetGuid  : Often null, but needed for type *MONSTER* or *BATTLENET or *BATTLEGROUND* or *ACHIEVEMENT
+	* \param char const* targetName        : Often null, but needed for type *MONSTER* or *BATTLENET or *BATTLEGROUND*
+	* \param char const* channelName       : Required only for CHAT_MSG_CHANNEL
+	* \param uint32 achievementId          : Required only for *ACHIEVEMENT
+	**/
+	static void BuildChatPacket(
+		WorldPacket& data, ChatMsg msgtype, char const* message, Language language = LANG_UNIVERSAL, ChatTagFlags chatTag = CHAT_TAG_NONE,
+		ObjectGuid const& senderGuid = ObjectGuid(), char const* senderName = nullptr,
+		ObjectGuid const& targetGuid = ObjectGuid(), char const* targetName = nullptr,
+		char const* channelName = nullptr, uint32 achievementId = 0);
 
 	int ParseCommands(const char* text);
 

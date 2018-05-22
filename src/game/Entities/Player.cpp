@@ -534,6 +534,8 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     m_isGhouled = false;
 
     m_createdInstanceClearTimer = MINUTE * IN_MILLISECONDS;
+
+	m_kickTimer = 0;
 }
 
 Player::~Player()
@@ -1419,6 +1421,17 @@ void Player::Update(uint32 update_diff, uint32 p_time)
     else if (m_playerbotMgr)
         m_playerbotMgr->UpdateAI(p_time);
 #endif
+
+	if (m_kickTimer > 0)
+	{
+		if (update_diff >= m_kickTimer)
+			GetSession()->LogoutPlayer(true);
+		else
+		{
+			m_kickTimer -= update_diff;
+			ChatHandler(this).BlueSystemMessage("You will be removed from the server in %u seconds.", (uint32)(m_kickTimer / 1000));
+		}
+	}
 }
 
 void Player::SetDeathState(DeathState s)
