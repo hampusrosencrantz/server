@@ -1384,3 +1384,66 @@ void WorldSession::HandleEquipmentSetUseOpcode(WorldPacket& recv_data)
     data << uint8(0);                                       // 4 - equipment swap failed - inventory is full
     SendPacket(data);
 }
+
+bool VerifyName(const char * name, size_t nlen)
+{
+	static char * bannedCharacters = "\t\v\b\f\a\n\r\\\"\'\? <>[](){}_=+-|/!@#$%^&*~`.,0123456789\0";
+	char * p;
+	for (size_t i = 0; i < nlen; ++i)
+	{
+		p = bannedCharacters;
+		while (*p != 0 && name[i] != *p && name[i] != 0)
+			++p;
+
+		if (*p != 0)
+			return false;
+	}
+	return true;
+}
+
+bool ChatHandler::HandleRenameCommand(const char * args)
+{
+	// prevent buffer overflow
+	if (strlen(args) > 100)
+		return false;
+
+	char name1[100];
+	char name2[100];
+
+	if (sscanf(args, "%s %s", name1, name2) != 2)
+		return false;
+
+	if (VerifyName(name2, strlen(name2)) == false)
+	{
+		RedSystemMessage("That name is invalid or contains invalid characters.");
+		return true;
+	}
+
+	std::string new_name = name2;
+	std::string oldn = name1;
+	Player *target = sObjectMgr.GetPlayer(name1);
+	uint64 targetGUID = 0;
+
+	if (!target)
+		targetGUID = target->GetGUIDLow();
+
+	if (!target && !targetGUID)
+	{
+		RedSystemMessage("Player not found with this name.");
+		return true;
+	}
+
+	if (target)
+	{
+		target->SetName(new_name);
+		ChatHandler(target).BlueSystemMessage("%s changed your name to '%s'.", m_session->GetPlayer()->GetName(), new_name.c_str());
+		target->SaveToDB();
+	}
+	else
+	{
+		CharacterDatabase.PExecute("UPDATE characters SET name = '%s' WHERE guid = '%u'", targetGUID);
+	}
+
+	GreenSystemMessage("Changed name of '%s' to '%s'.", name1, name2);
+	return true;
+}
