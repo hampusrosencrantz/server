@@ -470,6 +470,8 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     rest_type = REST_TYPE_NO;
     //////////////////// Rest System/////////////////////
 
+	m_banned = false;
+
     m_mailsUpdated = false;
     unReadMails = 0;
     m_nextMailDelivereTime = 0;
@@ -1550,6 +1552,8 @@ bool Player::BuildEnumData(QueryResult* result, WorldPacket& p_data)
         char_flags |= CHARACTER_FLAG_GHOST;
     if (atLoginFlags & AT_LOGIN_RENAME)
         char_flags |= CHARACTER_FLAG_RENAME;
+	if (m_banned)
+		char_flags |= CHARACTER_FLAG_LOCKED_BY_BILLING;
     if (sWorld.getConfig(CONFIG_BOOL_DECLINED_NAMES_USED))
     {
         if (!fields[20].GetCppString().empty())
@@ -15455,8 +15459,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     //"resettalents_time, trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, online, death_expire_time, taxi_path, dungeon_difficulty,"
     // 39           40                41                42                    43          44          45              46           47               48              49
     //"arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, todayKills, yesterdayKills, chosenTitle, knownCurrencies, watchedFaction, drunk,"
-    // 50      51      52      53      54      55      56      57      58         59          60             61              62      63           64
-    //"health, power1, power2, power3, power4, power5, power6, power7, specCount, activeSpec, exploredZones, equipmentCache, ammoId, knownTitles, actionBars  FROM characters WHERE guid = '%u'", GUID_LOPART(m_guid));
+    // 50      51      52      53      54      55      56      57      58         59          60             61              62      63           64            65       66
+    //"health, power1, power2, power3, power4, power5, power6, power7, specCount, activeSpec, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, banned, bannedReason  FROM characters WHERE guid = '%u'", GUID_LOPART(m_guid));
     QueryResult* result = holder->GetResult(PLAYER_LOGIN_QUERY_LOADFROM);
 
     if (!result)
@@ -15537,6 +15541,9 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     // Action bars state
     SetByteValue(PLAYER_FIELD_BYTES, 2, fields[64].GetUInt8());
+
+	m_banned = fields[65].GetUInt32();
+	m_bannedReason = fields[66].GetString();
 
     // cleanup inventory related item value fields (its will be filled correctly in _LoadInventory)
     for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
@@ -17220,7 +17227,7 @@ void Player::SaveToDB()
                               "trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, "
                               "death_expire_time, taxi_path, arenaPoints, totalHonorPoints, todayHonorPoints, yesterdayHonorPoints, totalKills, "
                               "todayKills, yesterdayKills, chosenTitle, knownCurrencies, watchedFaction, drunk, health, power1, power2, power3, "
-                              "power4, power5, power6, power7, specCount, activeSpec, exploredZones, equipmentCache, ammoId, knownTitles, actionBars) "
+                              "power4, power5, power6, power7, specCount, activeSpec, exploredZones, equipmentCache, ammoId, knownTitles, actionBars, banned, bannedReason) "
                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, "
@@ -17228,7 +17235,7 @@ void Player::SaveToDB()
                               "?, ?, ?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, ?, "
                               "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                              "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
+                              "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?) ");
 
     uberInsert.addUInt32(GetGUIDLow());
     uberInsert.addUInt32(GetSession()->GetAccountId());
@@ -17357,6 +17364,9 @@ void Player::SaveToDB()
     uberInsert.addString(ss);
 
     uberInsert.addUInt32(uint32(GetByteValue(PLAYER_FIELD_BYTES, 2)));
+
+	uberInsert.addUInt32(m_banned);
+	uberInsert.addString(m_banreason);
 
     uberInsert.Execute();
 

@@ -1717,6 +1717,12 @@ class Player : public Unit
         void SetAllowLowLevelRaid(bool allow) { ApplyModFlag(PLAYER_FLAGS, PLAYER_FLAGS_ENABLE_LOW_LEVEL_RAID, allow); }
         bool GetAllowLowLevelRaid() const { return HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_ENABLE_LOW_LEVEL_RAID); }
 
+		void SetBanned() { m_banned = 4; }
+		void SetBanned(std::string Reason) { m_banned = 4; m_banreason = Reason; }
+		void UnSetBanned() { m_banned = 0; }
+		inline bool IsBanned() { return ((m_banned > 0) ? true : false); }
+		std::string GetBanReason() { return m_banreason; }
+
         void SetInGuild(uint32 GuildId) { SetUInt32Value(PLAYER_GUILDID, GuildId); }
         void SetRank(uint32 rankId) { SetUInt32Value(PLAYER_GUILDRANK, rankId); }
         void SetGuildIdInvited(uint32 GuildId) { m_GuildIdInvited = GuildId; }
@@ -2626,6 +2632,9 @@ class Player : public Unit
         float  m_summon_x;
         float  m_summon_y;
         float  m_summon_z;
+
+		uint32 m_banned;
+		std::string m_banreason;
 
         DeclinedName* m_declinedname;
         Runes* m_runes;
