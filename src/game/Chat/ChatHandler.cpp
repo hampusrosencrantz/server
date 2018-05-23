@@ -210,7 +210,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             Player* player = sObjectMgr.GetPlayer(to.c_str());
             uint32 tSecurity = GetSecurity();
             uint32 pSecurity = player ? player->GetSession()->GetSecurity() : SEC_PLAYER;
-            if (!player || (tSecurity == SEC_PLAYER && pSecurity > SEC_PLAYER && !player->isAcceptWhispers()))
+            if (!player || (tSecurity == SEC_PLAYER && pSecurity > SEC_PLAYER && !player->gmTargets.count(_player)))
             {
 				std::string Reply = "This Game Master does not currently have an open ticket from you and did not receive your whisper. Please submit a new GM Ticket request if you need to speak to a GM. This is an automatic message.";
 				WorldPacket data;

@@ -873,4 +873,154 @@ bool ChatHandler::HandleLandCommand(const char* args)
 
 bool ChatHandler::HandleDBReloadCommand(const char* args)
 {
+	char str[200];
+	if (!*args || strlen(args) < 3)
+		return false;
+
+	uint32 mstime = WorldTimer::getMSTime();
+	snprintf(str, 200, "%s%s initiated server-side reload of table `%s`. The server may experience some lag while this occurs.",
+		MSG_COLOR_LIGHTRED, m_session->GetPlayer()->GetName(), args);
+
+	// missing tables
+	if (!stricmp(args, "item_template"))
+		sObjectMgr.LoadItemPrototypes();
+	else if (!stricmp(args, "creature_template"))
+		sObjectMgr.LoadCreatureTemplates();
+	else if (!stricmp(args, "gameobject_template"))
+		sObjectMgr.LoadGameobjectInfo();
+	else if (!stricmp(args, "quest_template"))
+		sObjectMgr.LoadQuests();
+	else if (!stricmp(args, "npc_text"))
+		sObjectMgr.LoadGossipText();
+	else if (!stricmp(args, "game_tele"))
+		sObjectMgr.LoadGameTele();
+	else if (!stricmp(args, "game_graveyard_zones"))
+		sObjectMgr.LoadGraveyardZones();
+	else
+	{
+		snprintf(str, 256, "%sDatabase reload failed.", MSG_COLOR_LIGHTRED);
+		sWorld.SendWorldText(str);
+		return true;
+	}
+	snprintf(str, 256, "%sDatabase reload completed in %u ms.", MSG_COLOR_LIGHTBLUE, (unsigned int)(WorldTimer::getMSTime() - mstime));
+	sWorld.SendWorldText(str);
+	return true;
+}
+
+bool ChatHandler::HandleResetHPCommand(const char* args)
+{
+	Creature *pCreature = getSelectedCreature();
+	if (!pCreature)
+		return true;
+
+	pCreature->SetHealth(pCreature->GetMaxHealth());
+	GreenSystemMessage("HP reloaded for %s.", pCreature->GetName());
+	return true;
+}
+
+bool ChatHandler::HandleFlySpeedCheatCommand(const char* args)
+{
+	float Speed = atof(args);
+	if (Speed == 0)
+		Speed = 20;
+
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	BlueSystemMessage("Setting the fly speed of %s to %f.", player->GetName(), Speed);
+	ChatHandler(player).GreenSystemMessage("%s set your fly speed to %f.", m_session->GetPlayer()->GetName(), Speed);
+	player->UpdateSpeed(MOVE_FLIGHT, true, Speed);
+	return true;
+}
+
+bool ChatHandler::HandleModifyLevelCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	uint32 Level = args ? atol(args) : 0;
+	if (Level == 0 || Level > int32(sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)))
+	{
+		RedSystemMessage("A level (numeric) is required to be specified after this command.");
+		return true;
+	}
+
+	// Set level message
+	BlueSystemMessage("Setting the level of %s to %u.", player->GetName(), Level);
+	ChatHandler(player).GreenSystemMessage("%s set your level to %u.", m_session->GetPlayer()->GetName(), Level);
+
+	player->GiveLevel(Level);
+	player->InitTalentForLevel();
+	player->SetUInt32Value(PLAYER_XP, 0);
+	return true;
+}
+
+bool ChatHandler::HandleShutdownCommand(const char* args)
+{
+	uint32 shutdowntime = atol(args);
+	if (!args)
+		shutdowntime = 5;
+
+	shutdowntime *= 1000;
+	char msg[500];
+	snprintf(msg, 500, "%sServer shutdown initiated by %s, shutting down in %u seconds.", MSG_COLOR_LIGHTBLUE,
+		m_session->GetPlayer()->GetName(), (unsigned int)shutdowntime);
+
+	sWorld.SendWorldText(msg);
+	sWorld.ShutdownServ(shutdowntime, 0, SHUTDOWN_EXIT_CODE);
+	return true;
+}
+
+bool ChatHandler::HandleShutdownRestartCommand(const char* args)
+{
+	uint32 shutdowntime = atol(args);
+	if (!args)
+		shutdowntime = 5;
+
+	shutdowntime *= 1000;
+	char msg[500];
+	snprintf(msg, 500, "%sServer restart initiated by %s, shutting down in %u seconds.", MSG_COLOR_LIGHTBLUE,
+		m_session->GetPlayer()->GetName(), (unsigned int)shutdowntime);
+
+	sWorld.SendWorldText(msg);
+	sWorld.ShutdownServ(shutdowntime, SHUTDOWN_MASK_RESTART, RESTART_EXIT_CODE);
+	return true;
+}
+
+bool ChatHandler::HandleAllowWhispersCommand(const char* args)
+{
+	if (args == 0 || strlen(args) < 2)
+		return false;
+	Player * player = sObjectMgr.GetPlayer(args);
+	if (!player)
+	{
+		RedSystemMessage("Player not found.");
+		return true;
+	}
+
+	m_session->GetPlayer()->gmTargets.insert(player);
+	BlueSystemMessage("Now accepting whispers from %s.", player->GetName());
+	return true;
+}
+
+bool ChatHandler::HandleBlockWhispersCommand(const char* args)
+{
+	if (args == 0 || strlen(args) < 2)
+		return false;
+	Player * player = sObjectMgr.GetPlayer(args);
+	if (!player)
+	{
+		RedSystemMessage("Player not found.");
+		return true;
+	}
+
+	m_session->GetPlayer()->gmTargets.erase(player);
+	BlueSystemMessage("Now blocking whispers from %s.", player->GetName());
+	return true;
+}
+
+bool ChatHandler::HandleAdvanceAllSkillsCommand(const char* args)
+{
 }
