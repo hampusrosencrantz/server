@@ -39,8 +39,8 @@ class AccountMgr
         AccountMgr();
         ~AccountMgr();
 
-        AccountOpResult CreateAccount(std::string username, std::string password) const;
-        AccountOpResult CreateAccount(std::string username, std::string password, uint32 expansion) const;
+        AccountOpResult CreateAccount(std::string username, std::string password, std::string email) const;
+        AccountOpResult CreateAccount(std::string username, std::string password, std::string email, uint32 expansion) const;
         AccountOpResult DeleteAccount(uint32 accid) const;
         AccountOpResult ChangeUsername(uint32 accid, std::string new_uname, std::string new_passwd) const;
         AccountOpResult ChangePassword(uint32 accid, std::string new_passwd) const;

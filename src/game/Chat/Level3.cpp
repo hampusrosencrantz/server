@@ -1,6 +1,7 @@
 #include "World/World.h"
 #include "Spells/SpellMgr.h"
 #include "Chat/Chat.h"
+#include "Accounts\AccountMgr.h"
 
 bool ChatHandler::HandleWeatherCommand(const char* args)
 {
@@ -411,3 +412,347 @@ bool ChatHandler::HandleUnBanCharacterCommand(const char* args)
 	return true;
 }
 
+bool ChatHandler::HandleNpcInfoCommand(const char *args)
+{
+	Creature* target = getSelectedCreature();
+
+	if (!target)
+		return false;
+
+	BlueSystemMessage("Showing creature info for %s", target->GetName());
+	SystemMessage("GUID: %d\nFaction: %d\nNPCFlags: %d\nDisplayID: %d", target->GetGUIDLow(), target->getFaction(), target->GetUInt32Value(UNIT_NPC_FLAGS), target->GetDisplayId());
+	GreenSystemMessage("Combat Support: 0x%.3X", target->getFactionTemplateEntry()->friendGroupMask);
+	GreenSystemMessage("Base Health: %d", target->GetHealth());
+	GreenSystemMessage("Base Armor: %d", target->GetArmor());
+	GreenSystemMessage("Base Mana: %d", target->GetUInt32Value(UNIT_FIELD_MAXPOWER1));
+	GreenSystemMessage("Base Holy: %d", target->GetResistance(SPELL_SCHOOL_HOLY));
+	GreenSystemMessage("Base Fire: %d", target->GetResistance(SPELL_SCHOOL_FIRE));
+	GreenSystemMessage("Base Nature: %d", target->GetResistance(SPELL_SCHOOL_NATURE));
+	GreenSystemMessage("Base Frost: %d", target->GetResistance(SPELL_SCHOOL_FROST));
+	GreenSystemMessage("Base Shadow: %d", target->GetResistance(SPELL_SCHOOL_SHADOW));
+	GreenSystemMessage("Base Arcane: %d", target->GetResistance(SPELL_SCHOOL_ARCANE));
+	GreenSystemMessage("Damage min/max: %f/%f", target->GetFloatValue(UNIT_FIELD_MINDAMAGE), target->GetFloatValue(UNIT_FIELD_MAXDAMAGE));
+
+	ColorSystemMessage(MSG_COLOR_RED, "Entry ID: %d", target->GetEntry());
+	ColorSystemMessage(MSG_COLOR_RED, "SQL Entry ID: %d", target->GetCreatureInfo()->Entry);
+	// show byte
+	std::stringstream sstext;
+	uint32 theBytes = target->GetUInt32Value(UNIT_FIELD_BYTES_0);
+	sstext << "UNIT_FIELD_BYTES_0 are " << uint16((uint8)theBytes & 0xFF) << " " << uint16((uint8)(theBytes >> 8) & 0xFF) << " ";
+	sstext << uint16((uint8)(theBytes >> 16) & 0xFF) << " " << uint16((uint8)(theBytes >> 24) & 0xFF) << '\0';
+	BlueSystemMessage(sstext.str().c_str());
+	return true;
+}
+
+bool ChatHandler::HandleIncreaseWeaponSkill(const char *args)
+{
+	char *pMin = strtok((char*)args, " ");
+	uint32 cnt = 0;
+	if (!pMin)
+		cnt = 1;
+	else
+		cnt = atol(pMin);
+
+	Player * target = getSelectedPlayer();
+	if (!target)
+		return false;
+
+	uint32 SubClassSkill = 0;
+	Item *item = target->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+	const ItemPrototype *proto = NULL;
+	if (!item)
+		item = target->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED);
+	if (item)
+		proto = item->GetProto();
+	if (proto)
+	{
+		switch (proto->SubClass)
+		{
+			// Weapons
+		case 0:	// 1 handed axes
+			SubClassSkill = SKILL_AXES;
+			break;
+		case 1:	// 2 handed axes
+			SubClassSkill = SKILL_2H_AXES;
+			break;
+		case 2:	// bows
+			SubClassSkill = SKILL_BOWS;
+			break;
+		case 3:	// guns
+			SubClassSkill = SKILL_GUNS;
+			break;
+		case 4:	// 1 handed mace
+			SubClassSkill = SKILL_MACES;
+			break;
+		case 5:	// 2 handed mace
+			SubClassSkill = SKILL_2H_MACES;
+			break;
+		case 6:	// polearms
+			SubClassSkill = SKILL_POLEARMS;
+			break;
+		case 7: // 1 handed sword
+			SubClassSkill = SKILL_SWORDS;
+			break;
+		case 8: // 2 handed sword
+			SubClassSkill = SKILL_2H_SWORDS;
+			break;
+		case 9: // obsolete
+			SubClassSkill = 136;
+			break;
+		case 10: //1 handed exotic
+			SubClassSkill = 136;
+			break;
+		case 11: // 2 handed exotic
+			SubClassSkill = 0;
+			break;
+		case 12: // fist
+			SubClassSkill = SKILL_FIST_WEAPONS;
+			break;
+		case 13: // misc
+			SubClassSkill = 0;
+			break;
+		case 15: // daggers
+			SubClassSkill = SKILL_DAGGERS;
+			break;
+		case 16: // thrown
+			SubClassSkill = SKILL_THROWN;
+			break;
+		case 18: // crossbows
+			SubClassSkill = SKILL_CROSSBOWS;
+			break;
+		case 19: // wands
+			SubClassSkill = SKILL_WANDS;
+			break;
+		case 20: // fishing
+			SubClassSkill = SKILL_FISHING;
+			break;
+		}
+	}
+	else
+	{
+		SubClassSkill = 162;
+	}
+
+	uint32 skill = SubClassSkill;
+
+	SkillLineEntry const* sl = sSkillLineStore.LookupEntry(skill);
+	if (!sl)
+	{
+		RedSystemMessage("Can't find skill ID :-/");
+		return false;
+	}
+
+	BlueSystemMessage("Modifying skill line %d. Advancing %d times.", skill, cnt);
+	if (!target->HasSkill(skill))
+		SystemMessage("Does not have skill line, adding.");
+
+	target->SetSkill(skill, cnt, target->GetMaxSkillValue(skill));
+	return true;
+}
+
+bool ChatHandler::HandleCellDeleteCommand(const char *args)
+{
+	return true;
+}
+
+bool ChatHandler::HandleResetLevelCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->SetLevel(1);
+	player->InitStatsForLevel(true);
+	player->InitTaxiNodesForLevel();
+	player->InitTalentForLevel();
+	player->SetUInt32Value(PLAYER_XP, 0);
+
+	// reset level to summoned pet
+	Pet* pet = player->GetPet();
+	if (pet && pet->getPetType() == SUMMON_PET)
+		pet->InitStatsForLevel(1);
+
+	SystemMessage("Reset stats of %s to level 1. Use .levelup to change level, and .resettalents and/or .resetspells if necessary.", player->GetName());
+	ChatHandler(player).BlueSystemMessage("%s reset all your stats to starting values.", m_session->GetPlayer()->GetName());
+
+	return true;
+}
+
+bool ChatHandler::HandleResetTalentsCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->resetTalents();
+
+	SystemMessage("Reset talents of %s.", player->GetName());;
+	ChatHandler(player).BlueSystemMessage("%s reset all your talents.", m_session->GetPlayer()->GetName());
+	return true;
+}
+
+bool ChatHandler::HandleResetSpellsCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->resetSpells();
+
+	SystemMessage("Reset spells of %s to level 1.", player->GetName());;
+	ChatHandler(player).BlueSystemMessage("%s reset all your spells to starting values.", m_session->GetPlayer()->GetName());
+	return true;
+}
+
+bool ChatHandler::HandleCreateAccountCommand(const char* args)
+{
+	char *user = strtok((char *)args, " ");
+	if (!user) return false;
+	char *pass = strtok(NULL, " ");
+	if (!pass) return false;
+	char *email = strtok(NULL, "\n");
+	if (!email) return false;
+
+	sAccountMgr.CreateAccount(user, pass, email);
+
+	BlueSystemMessage("Attempting to create account: %s, %s (Email: %s)...", user, pass, email);
+	GreenSystemMessage("Account creation successful. The account will be active with the next reload cycle.");
+	return true;
+}
+
+bool ChatHandler::HandleGetTransporterTime(const char* args)
+{
+	Creature* crt = getSelectedCreature();
+	if (!crt)
+		return false;
+
+	WorldPacket data(SMSG_ATTACKERSTATEUPDATE, 1000);
+	data << uint32(0x00000102);
+	data << crt->GetPackGUID();
+	data << m_session->GetPlayer()->GetPackGUID();
+
+	data << uint32(6);
+	data << uint8(1);
+	data << uint32(1);
+	data << uint32(0x40c00000);
+	data << uint32(6);
+	data << uint32(0);
+	data << uint32(0);
+	data << uint32(1);
+	data << uint32(0x000003e8);
+	data << uint32(0);
+	data << uint32(0);
+	m_session->SendPacket(data);
+	return true;
+}
+
+bool ChatHandler::HandleRemoveAurasCommand(const char *args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return false;
+
+	BlueSystemMessage("Removing all auras...");
+	player->RemoveAllAuras();
+	return true;
+}
+
+bool ChatHandler::HandleParalyzeCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+	{
+		RedSystemMessage("Invalid target.");
+		return true;
+	}
+
+	BlueSystemMessage("Rooting target.");
+	ChatHandler(player).BlueSystemMessage("You have been rooted by %s.", m_session->GetPlayer()->GetName());
+	player->SetRoot(true);
+	return true;
+}
+
+bool ChatHandler::HandleUnParalyzeCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+	{
+		RedSystemMessage("Invalid target.");
+		return true;
+	}
+
+	BlueSystemMessage("Unrooting target.");
+	ChatHandler(player).BlueSystemMessage("You have been unrooted by %s.", m_session->GetPlayer()->GetName());
+	player->SetRoot(false);
+	return true;
+}
+
+bool ChatHandler::HandleSetMotdCommand(const char* args)
+{
+	if (!args || strlen(args) < 2)
+	{
+		RedSystemMessage("You must specify a message.");
+		return true;
+	}
+	sWorld.SetMotd(args);
+	GreenSystemMessage("Motd has been set to: %s", args);
+	return true;
+}
+
+bool ChatHandler::HandleAddItemSetCommand(const char* args)
+{
+	uint32 setid = (args ? atoi(args) : 0);
+	if (!setid)
+	{
+		RedSystemMessage("You must specify a setid.");
+		return true;
+	}
+
+	Player *player = getSelectedPlayer();
+	if (player == NULL) {
+		RedSystemMessage("Unable to select character.");
+		return true;
+	}
+
+	QueryResult *result = WorldDatabase.PQuery("SELECT entry FROM item_template WHERE itemset = %u", setid);
+
+	if (!result)
+	{
+		RedSystemMessage("Invalid item set.");
+		return true;
+	}
+
+	const ItemSetEntry *itemset = sItemSetStore.LookupEntry(setid);
+	BlueSystemMessage("Searching item set %u (%s)...", setid, itemset->name);
+	uint32 start = WorldTimer::getMSTime();
+	do
+	{
+		Field *fields = result->Fetch();
+		uint32 itemId = fields[0].GetUInt32();
+
+		ItemPosCountVec dest;
+		uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemId, 1);
+		if (dest.empty)
+		{
+			m_session->SendNotification("No free slots left!");
+			return true;
+		}
+		else
+		{
+			Item* item = player->StoreNewItem(dest, itemId, true);
+
+			player->SendNewItem(item, 1, true, false);
+
+			SystemMessage("Added item: %s [%u]", item->GetProto()->Name1, item->GetProto()->ItemId);
+		}
+	} while (result->NextRow());
+	delete result;
+
+	GreenSystemMessage("Added set to inventory complete. Time: %u ms", WorldTimer::getMSTime() - start);
+
+	return true;
+}
+
+bool ChatHandler::HandleCastTimeCheatCommand(const char* args)
+{
+}

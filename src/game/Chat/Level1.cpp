@@ -130,7 +130,7 @@ bool ChatHandler::HandleAddInvItemCommand(const char *args)
 	Player* pl = getSelectedPlayer();
 
 	ItemPosCountVec dest;
-	uint8 msg = pl->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemid, 1);
+	pl->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemid, 1);
 
 	if (dest.empty())
 	{
@@ -142,7 +142,7 @@ bool ChatHandler::HandleAddInvItemCommand(const char *args)
 
 	if (item)
 	{
-		pl->SendNewItem(item, 1, false, true);
+		pl->SendNewItem(item, 1, true, false);
 
 		char messagetext[128];
 		snprintf(messagetext, 128, "Adding item %d (%s) to %s's inventory.", itemid, item->GetProto()->Name1, pl->GetName());

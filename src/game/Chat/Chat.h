@@ -214,7 +214,7 @@ protected:
 	bool HandleGMTicketGetAllCommand(const char* args);
 	bool HandleGMTicketGetByIdCommand(const char* args);
 	bool HandleGMTicketDelByIdCommand(const char* args);
-	bool HandleMaxSkillCommand(const char* args);
+	bool HandleAddSkillCommand(const char* args);
 	bool HandleAddInvItemCommand(const char* args);
 	bool HandleWeatherCommand(const char* args);
 	bool HandleGetRankCommand(const char* args);
