@@ -378,7 +378,7 @@ bool ChatHandler::HandleBanCharacterCommand(const char* args)
 
 	CharacterDatabase.PExecute("UPDATE characters SET banned = 4 WHERE name = '%s'", Character);
 	if (HasReason)
-		CharacterDatabase.PExecute("UPDATE characters SET bannedReason = \"%s\" WHERE name = '%s'", Character);
+		CharacterDatabase.PExecute("UPDATE characters SET banReason = \"%s\" WHERE name = '%s'", Character);
 
 	SystemMessage("Banned character %s in database.", Character);
 	return true;
@@ -754,5 +754,123 @@ bool ChatHandler::HandleAddItemSetCommand(const char* args)
 }
 
 bool ChatHandler::HandleCastTimeCheatCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	bool val = player->CastTimeCheat;
+	BlueSystemMessage("%s cast time cheat on %s.", val ? "Deactivating" : "Activating", player->GetName());
+	ChatHandler(player).GreenSystemMessage("%s %s a cast time cheat on you.", m_session->GetPlayer()->GetName(), val ? "deactivated" : "activated");
+
+	player->CastTimeCheat = !val;
+	return true;
+}
+
+bool ChatHandler::HandleCooldownCheatCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	bool val = player->CooldownCheat;
+	BlueSystemMessage("%s cooldown cheat on %s.", val ? "Deactivating" : "Activating", player->GetName());
+	ChatHandler(player).GreenSystemMessage("%s %s a cooldown cheat on you.", m_session->GetPlayer()->GetName(), val ? "deactivated" : "activated");
+
+	player->CooldownCheat = !val;
+	return true;
+}
+
+bool ChatHandler::HandleGodModeCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	bool val = player->GodModeCheat;
+	BlueSystemMessage("%s godmode cheat on %s.", val ? "Deactivating" : "Activating", player->GetName());
+	ChatHandler(player).GreenSystemMessage("%s %s a godmode cheat on you.", m_session->GetPlayer()->GetName(), val ? "deactivated" : "activated");
+
+	player->GodModeCheat = !val;
+	return true;
+}
+
+bool ChatHandler::HandlePowerCheatCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	bool val = player->PowerCheat;
+	BlueSystemMessage("%s power cheat on %s.", val ? "Deactivating" : "Activating", player->GetName());
+	ChatHandler(player).GreenSystemMessage("%s %s a power cheat on you.", m_session->GetPlayer()->GetName(), val ? "deactivated" : "activated");
+
+	player->PowerCheat = !val;
+	return true;
+}
+
+bool ChatHandler::HandleShowCheatsCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	uint32 active = 0, inactive = 0;
+#define print_cheat_status(CheatName, CheatVariable) SystemMessage("%s%s: %s%s", MSG_COLOR_LIGHTBLUE, CheatName, \
+		CheatVariable ? MSG_COLOR_LIGHTRED : MSG_COLOR_GREEN, CheatVariable ? "Active" : "Inactive");  \
+		if(CheatVariable) \
+		active++; \
+		else \
+		inactive++; 
+
+	GreenSystemMessage("Showing cheat status for: %s", player->GetName());
+	print_cheat_status("Cooldown", player->CooldownCheat);
+	print_cheat_status("CastTime", player->CastTimeCheat);
+	print_cheat_status("GodMode", player->GodModeCheat);
+	print_cheat_status("Power", player->PowerCheat);
+	print_cheat_status("Fly", player->FlyCheat);
+	print_cheat_status("AuraStack", player->stack_cheat);
+	SystemMessage("%u cheats active, %u inactive.", active, inactive);
+
+#undef print_cheat_status
+
+	return true;
+}
+
+bool ChatHandler::HandleFlyCommand(const char* args)
+{
+	WorldPacket data(SMSG_MOVE_SET_CAN_FLY, 12);
+
+	Player *player = getSelectedPlayer();
+
+	if (!player)
+		player = m_session->GetPlayer();
+
+	player->FlyCheat = true;
+	data << player->GetPackGUID();
+	data << uint32(0);
+	player->SendMessageToSet(data, true);
+	ChatHandler(player).BlueSystemMessage("Flying mode enabled.");
+	return true;
+}
+
+bool ChatHandler::HandleLandCommand(const char* args)
+{
+	WorldPacket data(SMSG_MOVE_UNSET_CAN_FLY, 12);
+
+	Player *player = getSelectedPlayer();
+
+	if (!player)
+		player = m_session->GetPlayer();
+
+	player->FlyCheat = false;
+	data << player->GetPackGUID();
+	data << uint32(0);
+	player->SendMessageToSet(data, true);
+	ChatHandler(player).BlueSystemMessage("Flying mode disabled.");
+	return true;
+}
+
+bool ChatHandler::HandleDBReloadCommand(const char* args)
 {
 }

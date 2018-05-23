@@ -3424,7 +3424,10 @@ void Spell::Prepare()
     prepareDataForTriggerSystem();
 
     // calculate cast time (calculated after first CheckCast check to prevent charge counting for first CheckCast fail)
-    m_casttime = GetSpellCastTime(m_spellInfo, this);
+	if (((Player*)m_caster)->CastTimeCheat)
+		m_casttime = 0;
+	else
+		m_casttime = GetSpellCastTime(m_spellInfo, this);
     m_duration = CalculateSpellDuration(m_spellInfo, m_caster);
 
     // set timer base at cast time
@@ -4011,6 +4014,10 @@ void Spell::SendSpellCooldown()
     if (m_caster->GetTypeId() == TYPEID_PLAYER)
     {
         Player* casterPlayer = static_cast<Player*>(m_caster);
+
+		if (casterPlayer->CooldownCheat)
+			return;
+
         // mana/health/etc potions, disabled by client (until combat out as declarate)
         if (m_CastItem && m_CastItem->IsPotion())
         {
@@ -4884,6 +4891,9 @@ void Spell::TakePower()
 {
     if (m_CastItem || m_triggeredByAuraSpell)
         return;
+
+	if (m_caster->IsPlayer() && ((Player*)m_caster)->PowerCheat)
+		return;
 
     // health as power used
     if (m_spellInfo->powerType == POWER_HEALTH)

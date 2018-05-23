@@ -1105,6 +1105,12 @@ class Player : public Unit
         float GetRestBonus() const { return m_rest_bonus; }
         void SetRestBonus(float rest_bonus_new);
 
+		bool CooldownCheat;
+		bool CastTimeCheat;
+		bool GodModeCheat;
+		bool PowerCheat;
+		bool FlyCheat;
+
         /**
         * \brief: compute rest bonus
         * \param: time_t timePassed > time from last check

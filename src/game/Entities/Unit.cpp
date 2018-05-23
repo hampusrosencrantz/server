@@ -622,6 +622,9 @@ void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageE
         return;
     }
 
+	if (pVictim->IsPlayer() && ((Player*)pVictim)->GodModeCheat)
+		return;
+
     // You don't lose health from damage taken from another player while in a sanctuary
     // You still see it in the combat log though
     if (!IsAllowedDamageInArea(pVictim))
@@ -646,6 +649,9 @@ void Unit::DealDamageMods(Unit* pVictim, uint32& damage, uint32* absorb, DamageE
 
 uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const* spellProto, bool durabilityLoss)
 {
+	if (pVictim->IsPlayer() && ((Player*)pVictim)->GodModeCheat)
+		return;
+
     // remove affects from attacker at any non-DoT damage (including 0 damage)
     if (damagetype != DOT)
     {
