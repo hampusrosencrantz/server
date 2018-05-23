@@ -366,10 +366,6 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     if (GetSession()->GetSecurity() >= SEC_GAMEMASTER)
         SetAcceptTicket(true);
 
-    // players always accept
-    if (GetSession()->GetSecurity() == SEC_PLAYER)
-        SetAcceptWhispers(true);
-
     m_comboPoints = 0;
 
     m_usedTalentCount = 0;
@@ -2414,7 +2410,7 @@ void Player::SetGMVisible(bool on)
     {
         m_ExtraFlags |= PLAYER_EXTRA_GM_INVISIBLE;          // add flag
 
-        SetAcceptWhispers(false);
+//      SetAcceptWhispers(false);
         SetGameMaster(true);
 
         SetVisibility(VISIBILITY_OFF);
@@ -5838,6 +5834,35 @@ void Player::UpdateSkillsToMaxSkillsForLevel()
         if (pskill == SKILL_DEFENSE)
             UpdateDefenseBonusesMod();
     }
+}
+
+void Player::AdvanceSkills(uint32 count)
+{
+	for (SkillStatusMap::iterator itr = mSkillStatus.begin(); itr != mSkillStatus.end(); ++itr)
+	{
+		SkillStatusData& skillStatus = itr->second;
+		if (skillStatus.uState == SKILL_DELETED)
+			continue;
+
+		uint32 pskill = itr->first;
+		if (IsProfessionOrRidingSkill(pskill))
+			continue;
+		uint32 valueIndex = PLAYER_SKILL_VALUE_INDEX(skillStatus.pos);
+		uint32 data = GetUInt32Value(valueIndex);
+
+		uint32 max = SKILL_MAX(data);
+
+		if (max > 1)
+		{
+			SetUInt32Value(valueIndex, MAKE_SKILL_VALUE(count, max));
+			if (skillStatus.uState != SKILL_NEW)
+				skillStatus.uState = SKILL_CHANGED;
+			GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_REACH_SKILL_LEVEL, pskill);
+		}
+
+		if (pskill == SKILL_DEFENSE)
+			UpdateDefenseBonusesMod();
+	}
 }
 
 // This functions sets a skill line value (and adds if doesn't exist yet)

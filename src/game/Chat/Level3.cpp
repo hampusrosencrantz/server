@@ -1,4 +1,5 @@
 #include "World/World.h"
+#include "Spells/Spell.h"
 #include "Spells/SpellMgr.h"
 #include "Chat/Chat.h"
 #include "Accounts\AccountMgr.h"
@@ -1022,5 +1023,126 @@ bool ChatHandler::HandleBlockWhispersCommand(const char* args)
 }
 
 bool ChatHandler::HandleAdvanceAllSkillsCommand(const char* args)
+{
+	uint32 amt = args ? atol(args) : 0;
+	if (!amt)
+	{
+		RedSystemMessage("An amount to increment is required.");
+		return true;
+	}
+
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->AdvanceSkills(amt);
+	ChatHandler(player).GreenSystemMessage("Advanced all your skill lines by %u points.", amt);
+	return true;
+}
+
+bool ChatHandler::HandleKillByPlayerCommand(const char* args)
+{
+	if (!args || strlen(args) < 2)
+	{
+		RedSystemMessage("A player's name is required.");
+		return true;
+	}
+
+	Player *player = sObjectMgr.GetPlayer(args);
+	if (!player)
+	{
+		RedSystemMessage("Player %s not found.", args);
+		return true;
+	}
+
+	GreenSystemMessage("Disconnecting %s.", player->GetName());
+	player->GetSession()->KickPlayer();
+	return true;
+}
+
+bool ChatHandler::HandleKillBySessionCommand(const char* args)
+{
+	if (!args || strlen(args) < 2)
+	{
+		RedSystemMessage("A player's name is required.");
+		return true;
+	}
+
+	WorldSession * session = sWorld.FindSession(sAccountMgr.GetId(args));
+	if (!session)
+	{
+		RedSystemMessage("Active session with name %s not found.", args);
+		return true;
+	}
+
+	GreenSystemMessage("Disconnecting %s.", args);
+	session->KickPlayer();
+	return true;
+}
+
+bool ChatHandler::HandleMassSummonCommand(const char* args)
+{
+	Player *player;
+	HashMapHolder<Player>::MapType &m = HashMapHolder<Player>::GetContainer();
+	HashMapHolder<Player>::MapType::iterator itr = m.begin();
+	for (; itr != m.end(); ++itr)
+	{
+		player = itr->second;
+		if (player->GetSession() && player->IsInWorld())
+		{
+			// before GM
+			float x, y, z;
+			player->GetClosePoint(x, y, z, player->GetObjectBoundingRadius());
+			player->TeleportTo(m_session->GetPlayer()->GetMapId(), x, y, z, player->GetOrientation());
+		}
+	}
+	return true;
+}
+
+bool ChatHandler::HandleCastAllCommand(const char* args)
+{
+	if (!args || strlen(args) < 2)
+	{
+		RedSystemMessage("No spellid specified.");
+		return true;
+	}
+
+	Player * player;
+	uint32 spellid = atol(args);
+	SpellEntry const* info = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
+	if (!info)
+	{
+		RedSystemMessage("Invalid spell specified.");
+		return true;
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		if (info->Effect[i] == SPELL_EFFECT_LEARN_SPELL)
+		{
+			RedSystemMessage("Learn spell specified.");
+			return true;
+		}
+	}
+
+	HashMapHolder<Player>::MapType &m = HashMapHolder<Player>::GetContainer();
+	HashMapHolder<Player>::MapType::iterator itr = m.begin();
+	for (; itr != m.end(); ++itr)
+	{
+		player = itr->second;
+		if (player->GetSession() && player->IsInWorld())
+		{
+			Spell *spell = new Spell(player, info, false);
+			SpellCastTargets targets;
+			targets.setUnitTarget(player);
+			spell->SpellStart(&targets);
+		}
+	}
+
+	BlueSystemMessage("Casted spell %u on all players!", spellid);
+	return true;
+}
+
+bool ChatHandler::HandleNpcReturnCommand(const char* args)
 {
 }

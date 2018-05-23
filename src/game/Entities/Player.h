@@ -1951,6 +1951,7 @@ class Player : public Unit
 
         void UpdateSkillsForLevel();
         void UpdateSkillsToMaxSkillsForLevel();             // for .levelup
+		void AdvanceSkills(uint32 count);
         void ModifySkillBonus(uint32 skillid, int32 val, bool talent);
 
         /*********************************************************/

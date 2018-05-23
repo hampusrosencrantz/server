@@ -192,8 +192,8 @@ bool ChatHandler::HandleSummonCommand(const char* args)
 
 		// before GM
 		float x, y, z;
-		player->GetClosePoint(x, y, z, player->GetObjectBoundingRadius());
-		player->TeleportTo(player->GetMapId(), x, y, z, player->GetOrientation());
+		m_session->GetPlayer()->GetClosePoint(x, y, z, player->GetObjectBoundingRadius());
+		player->TeleportTo(m_session->GetPlayer()->GetMapId(), x, y, z, player->GetOrientation());
 	}
 	else
 	{
