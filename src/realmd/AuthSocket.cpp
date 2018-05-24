@@ -380,157 +380,105 @@ bool AuthSocket::_HandleLogonChallenge()
     pkt << (uint8) CMD_AUTH_LOGON_CHALLENGE;
     pkt << (uint8) 0x00;
 
-    ///- Verify that this IP is not in the ip_banned table
-    // No SQL injection possible (paste the IP address as passed by the socket)
-    std::unique_ptr<QueryResult> ip_banned_result(LoginDatabase.PQuery("SELECT unbandate FROM ip_banned "
-            "WHERE (unbandate = bandate OR unbandate > UNIX_TIMESTAMP()) AND ip = '%s'", m_address.c_str()));
+    ///- Get the account details from the account table
+    // No SQL injection (escaped user name)
 
-    std::unique_ptr<QueryResult> account_banned_result(LoginDatabase.PQuery(
-                "SELECT ab.unbandate FROM account_banned ab LEFT JOIN account a ON a.id = ab.id "
-                "WHERE active = 1 AND a.username = '%s' AND (ab.unbandate = ab.bandate OR ab.unbandate > UNIX_TIMESTAMP())", _safelogin.c_str()));
-
-    if (ip_banned_result || account_banned_result)
+    QueryResult* result = LoginDatabase.PQuery("SELECT sha_pass_hash,id,banned,last_ip,gmlevel,v,s,token FROM account WHERE username = '%s'", _safelogin.c_str());
+    if (result)
     {
-        pkt << (uint8)WOW_FAIL_BANNED;
-        BASIC_LOG("[AuthChallenge] Banned ip %s tries to login!", m_address.c_str());
-    }
-    else
-    {
-        ///- Get the account details from the account table
-        // No SQL injection (escaped user name)
+        Field* fields = result->Fetch();
 
-        QueryResult* result = LoginDatabase.PQuery("SELECT sha_pass_hash,id,locked,last_ip,gmlevel,v,s,token FROM account WHERE username = '%s'", _safelogin.c_str());
-        if (result)
+        bool banned = false;
+		if (fields[2].GetUInt8() == 1)
+		{
+			pkt << (uint8)WOW_FAIL_BANNED;
+			BASIC_LOG("[AuthChallenge] Banned account %s tries to login!", _login.c_str());
+			banned = true;
+		}
+
+        if (!banned)
         {
-            Field* fields = result->Fetch();
+            ///- Get the password from the account table, upper it, and make the SRP6 calculation
+            std::string rI = fields[0].GetCppString();
 
-            ///- If the IP is 'locked', check that the player comes indeed from the correct IP address
-            bool locked = false;
-            if (fields[2].GetUInt8() == 1)               // if ip is locked
-            {
-                DEBUG_LOG("[AuthChallenge] Account '%s' is locked to IP - '%s'", _login.c_str(), fields[3].GetString());
-                DEBUG_LOG("[AuthChallenge] Player address is '%s'", m_address.c_str());
-                if (strcmp(fields[3].GetString(), m_address.c_str()))
-                {
-                    DEBUG_LOG("[AuthChallenge] Account IP differs");
-                    pkt << (uint8) WOW_FAIL_SUSPENDED;
-                    locked = true;
-                }
-                else
-                {
-                    DEBUG_LOG("[AuthChallenge] Account IP matches");
-                }
-            }
+            ///- Don't calculate (v, s) if there are already some in the database
+            std::string databaseV = fields[5].GetCppString();
+            std::string databaseS = fields[6].GetCppString();
+
+            DEBUG_LOG("database authentication values: v='%s' s='%s'", databaseV.c_str(), databaseS.c_str());
+
+            // multiply with 2, bytes are stored as hexstring
+            if (databaseV.size() != s_BYTE_SIZE * 2 || databaseS.size() != s_BYTE_SIZE * 2)
+                _SetVSFields(rI);
             else
             {
-                DEBUG_LOG("[AuthChallenge] Account '%s' is not locked to ip", _login.c_str());
+                s.SetHexStr(databaseS.c_str());
+                v.SetHexStr(databaseV.c_str());
             }
 
-            if (!locked)
+            b.SetRand(19 * 8);
+            BigNumber gmod = g.ModExp(b, N);
+            B = ((v * 3) + gmod) % N;
+
+            MANGOS_ASSERT(gmod.GetNumBytes() <= 32);
+
+            BigNumber unk3;
+            unk3.SetRand(16 * 8);
+
+            ///- Fill the response packet with the result
+            pkt << uint8(WOW_SUCCESS);
+
+            // B may be calculated < 32B so we force minimal length to 32B
+            pkt.append(B.AsByteArray(32), 32);      // 32 bytes
+            pkt << uint8(1);
+            pkt.append(g.AsByteArray(), 1);
+            pkt << uint8(32);
+            pkt.append(N.AsByteArray(32), 32);
+            pkt.append(s.AsByteArray(), s.GetNumBytes());// 32 bytes
+            pkt.append(unk3.AsByteArray(16), 16);
+            uint8 securityFlags = 0;
+
+            _token = fields[7].GetCppString();
+            if (!_token.empty() && _build >= 8606) // authenticator was added in 2.4.3
+                securityFlags = SECURITY_FLAG_AUTHENTICATOR;
+
+            pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
+
+            if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
             {
-                ///- If the account is banned, reject the logon attempt
-                QueryResult* banresult = LoginDatabase.PQuery("SELECT bandate,unbandate FROM account_banned WHERE "
-                                         "id = %u AND active = 1 AND (unbandate > UNIX_TIMESTAMP() OR unbandate = bandate)", fields[1].GetUInt32());
-                if (banresult)
-                {
-                    if ((*banresult)[0].GetUInt64() == (*banresult)[1].GetUInt64())
-                    {
-                        pkt << (uint8) WOW_FAIL_BANNED;
-                        BASIC_LOG("[AuthChallenge] Banned account %s tries to login!", _login.c_str());
-                    }
-                    else
-                    {
-                        pkt << (uint8) WOW_FAIL_SUSPENDED;
-                        BASIC_LOG("[AuthChallenge] Temporarily banned account %s tries to login!", _login.c_str());
-                    }
-
-                    delete banresult;
-                }
-                else
-                {
-                    ///- Get the password from the account table, upper it, and make the SRP6 calculation
-                    std::string rI = fields[0].GetCppString();
-
-                    ///- Don't calculate (v, s) if there are already some in the database
-                    std::string databaseV = fields[5].GetCppString();
-                    std::string databaseS = fields[6].GetCppString();
-
-                    DEBUG_LOG("database authentication values: v='%s' s='%s'", databaseV.c_str(), databaseS.c_str());
-
-                    // multiply with 2, bytes are stored as hexstring
-                    if (databaseV.size() != s_BYTE_SIZE * 2 || databaseS.size() != s_BYTE_SIZE * 2)
-                        _SetVSFields(rI);
-                    else
-                    {
-                        s.SetHexStr(databaseS.c_str());
-                        v.SetHexStr(databaseV.c_str());
-                    }
-
-                    b.SetRand(19 * 8);
-                    BigNumber gmod = g.ModExp(b, N);
-                    B = ((v * 3) + gmod) % N;
-
-                    MANGOS_ASSERT(gmod.GetNumBytes() <= 32);
-
-                    BigNumber unk3;
-                    unk3.SetRand(16 * 8);
-
-                    ///- Fill the response packet with the result
-                    pkt << uint8(WOW_SUCCESS);
-
-                    // B may be calculated < 32B so we force minimal length to 32B
-                    pkt.append(B.AsByteArray(32), 32);      // 32 bytes
-                    pkt << uint8(1);
-                    pkt.append(g.AsByteArray(), 1);
-                    pkt << uint8(32);
-                    pkt.append(N.AsByteArray(32), 32);
-                    pkt.append(s.AsByteArray(), s.GetNumBytes());// 32 bytes
-                    pkt.append(unk3.AsByteArray(16), 16);
-                    uint8 securityFlags = 0;
-
-                    _token = fields[7].GetCppString();
-                    if (!_token.empty() && _build >= 8606) // authenticator was added in 2.4.3
-                        securityFlags = SECURITY_FLAG_AUTHENTICATOR;
-
-                    pkt << uint8(securityFlags);                    // security flags (0x0...0x04)
-
-                    if (securityFlags & SECURITY_FLAG_PIN)          // PIN input
-                    {
-                        pkt << uint32(0);
-                        pkt << uint64(0);
-                        pkt << uint64(0);
-                    }
-
-                    if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
-                    {
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint8(0);
-                        pkt << uint64(0);
-                    }
-
-                    if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
-                        pkt << uint8(1);
-
-                    uint8 secLevel = fields[4].GetUInt8();
-                    _accountSecurityLevel = secLevel <= SEC_ADMINISTRATOR ? AccountTypes(secLevel) : SEC_ADMINISTRATOR;
-
-                    _localizationName.resize(4);
-                    for (int i = 0; i < 4; ++i)
-                        _localizationName[i] = ch->country[4 - i - 1];
-
-                    BASIC_LOG("[AuthChallenge] account %s is using '%c%c%c%c' locale (%u)", _login.c_str(), ch->country[3], ch->country[2], ch->country[1], ch->country[0], GetLocaleByName(_localizationName));
-
-                    ///- All good, await client's proof
-                    _status = STATUS_LOGON_PROOF;
-                }
+                pkt << uint32(0);
+                pkt << uint64(0);
+                pkt << uint64(0);
             }
-            delete result;
+
+            if (securityFlags & SECURITY_FLAG_UNK)          // Matrix input
+            {
+                pkt << uint8(0);
+                pkt << uint8(0);
+                pkt << uint8(0);
+                pkt << uint8(0);
+                pkt << uint64(0);
+            }
+
+            if (securityFlags & SECURITY_FLAG_AUTHENTICATOR)    // Authenticator input
+                pkt << uint8(1);
+
+            uint8 secLevel = fields[4].GetUInt8();
+            _accountSecurityLevel = secLevel <= SEC_ADMINISTRATOR ? AccountTypes(secLevel) : SEC_ADMINISTRATOR;
+
+            _localizationName.resize(4);
+            for (int i = 0; i < 4; ++i)
+                _localizationName[i] = ch->country[4 - i - 1];
+
+            BASIC_LOG("[AuthChallenge] account %s is using '%c%c%c%c' locale (%u)", _login.c_str(), ch->country[3], ch->country[2], ch->country[1], ch->country[0], GetLocaleByName(_localizationName));
+
+            ///- All good, await client's proof
+            _status = STATUS_LOGON_PROOF;
         }
-        else                                                // no account
-            pkt << (uint8) WOW_FAIL_UNKNOWN_ACCOUNT;
+        delete result;
     }
+    else                                                // no account
+        pkt << (uint8) WOW_FAIL_UNKNOWN_ACCOUNT;
 
     Write((const char*)pkt.contents(), pkt.size());
     return true;

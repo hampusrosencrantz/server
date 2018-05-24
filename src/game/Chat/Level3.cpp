@@ -25,7 +25,7 @@ bool ChatHandler::HandleSecurityCommand(const char* args)
 	if (target)
 	{
 		SystemMessage("You change security string of %s to [%i].", target->GetName(), gm);
-		ChatHandler(target).SystemMessage("%s changed your security string to [%i].", m_session->GetPlayer()->GetName(), gm);
+		ChatHandler(target).SystemMessage("%s changed your security string to [%d].", m_session->GetPlayer()->GetName(), gm);
 		LoginDatabase.PExecute("UPDATE account SET gmlevel = '%i' WHERE id = '%u'", gm, target->GetSession()->GetAccountId());
 	}
 	else
@@ -1236,5 +1236,149 @@ bool ChatHandler::HandleResetSkillsCommand(const char* args)
 }
 
 bool ChatHandler::HandlePlayerInfo(const char* args)
+{
+	Player * plr;
+	if (strlen(args) >= 2) // char name can be 2 letters
+	{
+		plr = sObjectMgr.GetPlayer(args);
+		if (!plr)
+		{
+			RedSystemMessage("Unable to locate player %s.", args);
+			return true;
+		}
+	}
+	else
+		plr = getSelectedPlayer();
+
+	if (!plr) return true;
+	if (!plr->GetSession())
+	{
+		RedSystemMessage("ERROR: this player hasn't got any session !");
+		return true;
+	}
+	if (!plr->GetSession()->GetLatency())
+	{
+		RedSystemMessage("ERROR: this player hasn't got any socket !");
+		return true;
+	}
+
+	WorldSession* sess = plr->GetSession();
+
+	static const char* classes[12] =
+	{ "None","Warrior", "Paladin", "Hunter", "Rogue", "Priest", "None", "Shaman", "Mage", "Warlock", "None", "Druid" };
+	static const char* races[12] =
+	{ "None","Human","Orc","Dwarf","Night Elf","Undead","Tauren","Gnome","Troll","None","Blood Elf","Draenei" };
+
+	char playedLevel[64];
+	char playedTotal[64];
+
+	int seconds = (plr->GetLevelPlayedTime());
+	int mins = 0;
+	int hours = 0;
+	int days = 0;
+	if (seconds >= 60)
+	{
+		mins = seconds / 60;
+		if (mins)
+		{
+			seconds -= mins * 60;
+			if (mins >= 60)
+			{
+				hours = mins / 60;
+				if (hours)
+				{
+					mins -= hours * 60;
+					if (hours >= 24)
+					{
+						days = hours / 24;
+						if (days)
+							hours -= days * 24;
+					}
+				}
+			}
+		}
+	}
+	snprintf(playedLevel, 64, "[%d days, %d hours, %d minutes, %d seconds]", days, hours, mins, seconds);
+
+	seconds = (plr->GetTotalPlayedTime());
+	mins = 0;
+	hours = 0;
+	days = 0;
+	if (seconds >= 60)
+	{
+		mins = seconds / 60;
+		if (mins)
+		{
+			seconds -= mins * 60;
+			if (mins >= 60)
+			{
+				hours = mins / 60;
+				if (hours)
+				{
+					mins -= hours * 60;
+					if (hours >= 24)
+					{
+						days = hours / 24;
+						if (days)
+							hours -= days * 24;
+					}
+				}
+			}
+		}
+	}
+	snprintf(playedTotal, 64, "[%d days, %d hours, %d minutes, %d seconds]", days, hours, mins, seconds);
+
+	GreenSystemMessage("%s is a %s %s %s", plr->GetName(),
+		(plr->getGender() ? "Female" : "Male"), races[plr->getRace()], classes[plr->getClass()]);
+
+	BlueSystemMessage("%s has played %s at this level", (plr->getGender() ? "She" : "He"), playedLevel);
+	BlueSystemMessage("and %s overall", playedTotal);
+
+	BlueSystemMessage("%s is connecting from account '%s'[%u] with permissions '%d'",
+		(plr->getGender() ? "She" : "He"), sess->GetAccountName().c_str(), sess->GetAccountId(), sess->GetSecurity());
+
+	BlueSystemMessage("%s uses Wrath of the Lich King (build 12340)", (plr->getGender() ? "She" : "He"));
+
+	BlueSystemMessage("%s IP is '%s', and has a latency of %ums", (plr->getGender() ? "Her" : "His"),
+		sess->GetRemoteAddress().c_str(), sess->GetLatency());
+
+	return true;
+}
+
+bool ChatHandler::HandleGlobalPlaySoundCommand(const char* args)
+{
+	if (!args)
+		return false;
+	uint32 sound = atoi(args);
+	if (!sound) return false;
+
+	WorldPacket data(SMSG_PLAY_SOUND, 4);
+	data << sound;
+	sWorld.SendGlobalMessage(data);
+	BlueSystemMessage("Broadcasted sound %u to server.", sound);
+	return true;
+}
+
+bool ChatHandler::HandleBanAccountCommand(const char * args)
+{
+	if (!args)
+		return false;
+
+	BlueSystemMessage("Account %s has been permanently banned.", args);
+
+	uint32 id = sAccountMgr.GetId(args);
+	if (!id)
+		return false;
+	LoginDatabase.PExecute("UPDATE account SET banned = 1 WHERE id = '%d'", id);
+
+	WorldSession *session = sWorld.FindSession(id);
+	if (session)
+		session->KickPlayer();
+
+	BlueSystemMessage("Accounts table reloaded.");
+	return true;
+}
+
+bool ChatHandler::HandleIPBanCommand(const char * args)
 {
 }

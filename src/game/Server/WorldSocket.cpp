@@ -307,7 +307,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
                              "gmlevel, "                 //1
                              "sessionkey, "              //2
                              "last_ip, "                 //3
-                             "locked, "                  //4
+                             "banned, "                  //4
                              "v, "                       //5
                              "s, "                       //6
                              "expansion, "               //7
@@ -350,21 +350,6 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     OPENSSL_free((void*) sStr);
     OPENSSL_free((void*) vStr);
 
-    ///- Re-check ip locking (same check as in realmd).
-    if (fields[4].GetUInt8() == 1)  // if ip is locked
-    {
-        if (strcmp(fields[3].GetString(), GetRemoteAddress().c_str()))
-        {
-            packet.Initialize(SMSG_AUTH_RESPONSE, 1);
-            packet << uint8(AUTH_FAILED);
-            SendPacket(packet);
-
-            delete result;
-            BASIC_LOG("WorldSocket::HandleAuthSession: Sent Auth Response (Account IP differs).");
-            return false;
-        }
-    }
-
     id = fields[0].GetUInt32();
     security = fields[1].GetUInt16();
     if (security > SEC_ADMINISTRATOR)                       // prevent invalid security settings in DB
@@ -382,24 +367,17 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
 
     delete result;
 
-    // Re-check account ban (same check as in realmd)
-    QueryResult* banresult =
-        LoginDatabase.PQuery("SELECT 1 FROM account_banned WHERE id = %u AND active = 1 AND (unbandate > UNIX_TIMESTAMP() OR unbandate = bandate)"
-                             "UNION "
-                             "SELECT 1 FROM ip_banned WHERE (unbandate = bandate OR unbandate > UNIX_TIMESTAMP()) AND ip = '%s'",
-                             id, GetRemoteAddress().c_str());
+	if (fields[4].GetUInt8() == 1)
+	{
+		packet.Initialize(SMSG_AUTH_RESPONSE, 1);
+		packet << uint8(AUTH_BANNED);
+		SendPacket(packet);
 
-    if (banresult) // if account banned
-    {
-        packet.Initialize(SMSG_AUTH_RESPONSE, 1);
-        packet << uint8(AUTH_BANNED);
-        SendPacket(packet);
+		delete result;
 
-        delete banresult;
-
-        sLog.outError("WorldSocket::HandleAuthSession: Sent Auth Response (Account banned).");
-        return false;
-    }
+		sLog.outError("WorldSocket::HandleAuthSession: Sent Auth Response (Account banned).");
+		return -1;
+	}
 
     // Check locked state for server
     AccountTypes allowedAccountType = sWorld.GetPlayerSecurityLimit();
@@ -452,7 +430,7 @@ bool WorldSocket::HandleAuthSession(WorldPacket& recvPacket)
     SqlStatement stmt = LoginDatabase.CreateStatement(updAccount, "UPDATE account SET last_ip = ? WHERE username = ?");
     stmt.PExecute(address.c_str(), account.c_str());
 
-    m_session = new WorldSession(id, this, AccountTypes(security), expansion, mutetime, locale);
+    m_session = new WorldSession(id, std::move(account), this, AccountTypes(security), expansion, mutetime, locale);
 
     m_crypt.Init(&K);
 
