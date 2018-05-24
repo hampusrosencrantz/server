@@ -379,6 +379,7 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
 	GodModeCheat = false;
 	PowerCheat = false;
 	FlyCheat = false;
+	StackCheat = false;
 
     m_zoneUpdateId = 0;
     m_zoneUpdateTimer = 0;
@@ -5960,6 +5961,24 @@ void Player::SetSkill(uint16 id, uint16 currVal, uint16 maxVal, uint16 step /*=0
             }
         }
     }
+}
+
+bool Player::ResetSkills()
+{
+	for (SkillStatusMap::iterator itr = mSkillStatus.begin(); itr != mSkillStatus.end(); ++itr)
+	{
+		SkillStatusData& skillStatus = itr->second;
+		if (skillStatus.uState == SKILL_DELETED)
+			continue;
+
+		uint32 pskill = itr->first;
+
+		uint32 valueIndex = PLAYER_SKILL_VALUE_INDEX(skillStatus.pos);
+		uint32 data = GetUInt32Value(valueIndex);
+		uint32 max = SKILL_MAX(data);
+
+		SetSkill(pskill, 0, max);
+	}
 }
 
 bool Player::HasSkill(uint32 skill) const

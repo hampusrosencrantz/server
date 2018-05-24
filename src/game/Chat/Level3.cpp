@@ -3,6 +3,7 @@
 #include "Spells/SpellMgr.h"
 #include "Chat/Chat.h"
 #include "Accounts\AccountMgr.h"
+#include "Entities/Transports.h"
 
 bool ChatHandler::HandleWeatherCommand(const char* args)
 {
@@ -830,7 +831,7 @@ bool ChatHandler::HandleShowCheatsCommand(const char* args)
 	print_cheat_status("GodMode", player->GodModeCheat);
 	print_cheat_status("Power", player->PowerCheat);
 	print_cheat_status("Fly", player->FlyCheat);
-	print_cheat_status("AuraStack", player->stack_cheat);
+	print_cheat_status("AuraStack", player->StackCheat);
 	SystemMessage("%u cheats active, %u inactive.", active, inactive);
 
 #undef print_cheat_status
@@ -1144,5 +1145,96 @@ bool ChatHandler::HandleCastAllCommand(const char* args)
 }
 
 bool ChatHandler::HandleNpcReturnCommand(const char* args)
+{
+	Creature * creature = getSelectedCreature();
+	if (!creature)
+		return true;
+
+	QueryResult *result = result = WorldDatabase.PQuery("SELECT position_x, position_y, position_z, orientation WHERE guid = '%u'", creature->GetGUIDLow());
+	Field *fields = result->Fetch();
+	float x = fields[0].GetFloat();
+	float y = fields[1].GetFloat();
+	float z = fields[2].GetFloat();
+	float o = fields[3].GetFloat();
+
+	creature->GetMap()->CreatureRelocation(creature, x, y, z, o);
+	creature->GetMotionMaster()->Initialize();
+	if (creature->isAlive())
+	{
+		creature->SetDeathState(JUST_DIED);
+		creature->Respawn();
+	}
+
+	return true;
+}
+
+bool ChatHandler::HandleModPeriodCommand(const char* args)
+{
+	Transport *trans = m_session->GetPlayer()->GetTransport();
+	if (!trans)
+	{
+		RedSystemMessage("You must be on a transporter.");
+		return true;
+	}
+
+	uint32 np = args ? atol(args) : 0;
+	if (np == 0)
+	{
+		RedSystemMessage("A time in ms must be specified.");
+		return true;
+	}
+
+	trans->m_period = np;
+	BlueSystemMessage("Period of %s set to %u.", trans->GetGOInfo()->name, np);
+	return true;
+}
+
+bool ChatHandler::HandleNpcFollowCommand(const char* args)
+{
+	Creature * creature = getSelectedCreature();
+	if (!creature)
+		return true;
+
+	// Follow player - Using pet's default dist and angle
+	creature->GetMotionMaster()->MoveFollow(m_session->GetPlayer(), PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
+	return true;
+}
+
+bool ChatHandler::HandleNullFollowCommand(const char* args)
+{
+	Creature * creature = getSelectedCreature();
+	if (!creature)
+		return true;
+
+	creature->GetMotionMaster()->MoveIdle();
+	return true;
+}
+
+bool ChatHandler::HandleStackCheatCommand(const char* args)
+{
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	bool val = player->StackCheat;
+	BlueSystemMessage("%s aura stack cheat on %s.", val ? "Deactivating" : "Activating", player->GetName());
+	ChatHandler(player).GreenSystemMessage("%s %s an aura stack cheat on you.", m_session->GetPlayer()->GetName(), val ? "deactivated" : "activated");
+
+	player->StackCheat = !val;
+	return true;
+}
+
+bool ChatHandler::HandleResetSkillsCommand(const char* args)
+{
+	Player *player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->ResetSkills();
+	BlueSystemMessage("Reset skills to default.");
+	return true;
+}
+
+bool ChatHandler::HandlePlayerInfo(const char* args)
 {
 }

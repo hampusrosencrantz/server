@@ -4810,6 +4810,9 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder* holder)
             SpellAuraHolder* foundHolder = iter->second;
             if (foundHolder->GetCasterGuid() == holder->GetCasterGuid())
             {
+				if (IsPlayer() && ((Player*)this)->StackCheat)
+					return false;
+
                 // Aura can stack on self -> Stack it;
                 if (aurSpellInfo->StackAmount)
                 {
