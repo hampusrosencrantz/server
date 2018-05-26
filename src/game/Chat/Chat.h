@@ -369,6 +369,9 @@ protected:
 	Creature* getSelectedCreature() const;
 	Unit*     getSelectedUnit() const;
 
+	uint16 GetItemIDFromLink(const char* link, uint32* itemid);
+	int32 GetSpellIDFromLink(const char* link);
+
 	WorldSession * m_session;
 
 	private:

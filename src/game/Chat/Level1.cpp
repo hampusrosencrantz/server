@@ -118,14 +118,21 @@ bool ChatHandler::HandleKickCommand(const char* args)
 
 bool ChatHandler::HandleAddInvItemCommand(const char *args)
 {
-	if (!*args)
+	uint32 itemid, count = 1;
+
+	if (strlen(args) < 1)
 		return false;
 
-	int itemid = atoi(strtok((char*)args, " "));
-	uint32 count = 1;
-	char *cCount = strtok(NULL, "\n");
-	if (cCount) count = atoi(cCount);
-	if (!count) count = 1;
+	if (sscanf(args, "%u %u", &itemid, &count) < 1)
+	{
+		uint16 ofs = GetItemIDFromLink(args, &itemid);
+		if (itemid == 0)
+			return false;
+		sscanf(args + ofs, "%u", &count);
+	}
+
+	if (count < 1)
+		count = 1;
 
 	Player* pl = getSelectedPlayer();
 
@@ -490,6 +497,9 @@ bool ChatHandler::HandleUnlearnCommand(const char* args)
 		return true;
 
 	uint32 spell = atol(args);
+	if (spell == 0)
+		spell = GetSpellIDFromLink(args);
+
 	if (spell == 0)
 	{
 		RedSystemMessage("You must specify a spell id.");

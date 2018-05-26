@@ -1160,6 +1160,48 @@ bool ChatHandler::CmdSetFloatField(WorldSession *m_session, uint32 field, uint32
 	return true;
 }
 
+uint16 ChatHandler::GetItemIDFromLink(const char* link, uint32* itemid)
+{
+	if (link == NULL)
+	{
+		*itemid = 0;
+		return 0;
+	}
+
+	uint16 slen = (uint16)strlen(link);
+	const char* ptr = strstr(link, "|Hitem:");
+	if (ptr == NULL)
+	{
+		*itemid = 0;
+		return slen;
+	}
+
+	ptr += 7;
+	*itemid = atoi(ptr);
+
+	ptr = strstr(link, "|r");
+	if (ptr == NULL)
+	{
+		*itemid = 0;
+		return slen;
+	}
+
+	ptr += 2;
+	return (ptr - link) & 0x0000ffff;
+}
+
+int32 ChatHandler::GetSpellIDFromLink(const char* link)
+{
+	if (link == NULL)
+		return 0;
+
+	const char* ptr = strstr(link, "|Hspell:");
+	if (ptr == NULL)
+		return 0;
+
+	return atol(ptr + 8);
+}
+
 char const *fmtstring(char const *format, ...)
 {
 	va_list        argptr;

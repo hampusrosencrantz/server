@@ -167,6 +167,8 @@ bool ChatHandler::HandleLearnCommand(const char* args)
 	}
 
 	uint32 spell = atol((char*)args);
+	if (spell == 0)
+		spell = GetSpellIDFromLink(args);
 
 	if (player->HasSpell(spell))
 	{
@@ -353,11 +355,11 @@ bool ChatHandler::HandleBanCharacterCommand(const char* args)
 	if (!*args)
 		return false;
 
-	char Character[255];
+	char cCharacter[255];
 	char Reason[1024];
 	bool HasReason = true;
 
-	int Args = sscanf(args, "%s %s", Character, Reason);
+	int Args = sscanf(args, "%s %s", cCharacter, Reason);
 	if (Args == 1)
 		HasReason = false;
 	else if (Args == 0)
@@ -366,7 +368,7 @@ bool ChatHandler::HandleBanCharacterCommand(const char* args)
 		return true;
 	}
 
-	Player *player = sObjectMgr.GetPlayer(Character);
+	Player *player = sObjectMgr.GetPlayer(cCharacter);
 	if (player)
 	{
 		GreenSystemMessage("Banned player %s ingame.", player->GetName());
@@ -376,13 +378,16 @@ bool ChatHandler::HandleBanCharacterCommand(const char* args)
 			player->SetBanned();
 	}
 	else
-		GreenSystemMessage("Player %s not found ingame.", Character);
+		GreenSystemMessage("Player %s not found ingame.", cCharacter);
 
-	CharacterDatabase.PExecute("UPDATE characters SET banned = 4 WHERE name = '%s'", Character);
+	std::string character;
+	CharacterDatabase.escape_string(character);
+
+	CharacterDatabase.PExecute("UPDATE characters SET banned = 4 WHERE name = '%s'", character.c_str());
 	if (HasReason)
-		CharacterDatabase.PExecute("UPDATE characters SET banReason = \"%s\" WHERE name = '%s'", Character);
+		CharacterDatabase.PExecute("UPDATE characters SET banReason = \"%s\" WHERE name = '%s'", character.c_str());
 
-	SystemMessage("Banned character %s in database.", Character);
+	SystemMessage("Banned character %s in database.", cCharacter);
 	return true;
 }
 
@@ -391,25 +396,28 @@ bool ChatHandler::HandleUnBanCharacterCommand(const char* args)
 	if (!*args)
 		return false;
 
-	char Character[255];
-	if (sscanf(args, "%s", Character) == 0)
+	char cCharacter[255];
+	if (sscanf(args, "%s", cCharacter) == 0)
 	{
 		RedSystemMessage("A character name and reason is required.");
 		return true;
 	}
 
-	Player *player = sObjectMgr.GetPlayer(Character);
+	Player *player = sObjectMgr.GetPlayer(cCharacter);
 	if (!player)
 	{
 		GreenSystemMessage("Unbanned player %s ingame.", player->GetName());
 		player->UnSetBanned();
 	}
 	else
-		GreenSystemMessage("Player %s not found ingame.", Character);
+		GreenSystemMessage("Player %s not found ingame.", cCharacter);
 
-	CharacterDatabase.PExecute("UPDATE characters SET banned = 0 WHERE name = '%s'", Character);
+	std::string character;
+	CharacterDatabase.escape_string(character);
 
-	SystemMessage("Unbanned character %s in database.", Character);
+	CharacterDatabase.PExecute("UPDATE characters SET banned = 0 WHERE name = '%s'", character.c_str());
+
+	SystemMessage("Unbanned character %s in database.", character.c_str());
 
 	return true;
 }
@@ -1110,6 +1118,9 @@ bool ChatHandler::HandleCastAllCommand(const char* args)
 
 	Player * player;
 	uint32 spellid = atol(args);
+	if (spellid == 0)
+		spellid = GetSpellIDFromLink(args);
+
 	SpellEntry const* info = sSpellTemplate.LookupEntry<SpellEntry>(spellid);
 	if (!info)
 	{
@@ -1366,12 +1377,12 @@ bool ChatHandler::HandleBanAccountCommand(const char * args)
 
 	BlueSystemMessage("Account %s has been permanently banned.", args);
 
-	uint32 id = sAccountMgr.GetId(args);
-	if (!id)
-		return false;
-	LoginDatabase.PExecute("UPDATE account SET banned = 1 WHERE id = '%d'", id);
 
-	WorldSession *session = sWorld.FindSession(id);
+	std::string account;
+	LoginDatabase.escape_string(account);
+	LoginDatabase.PExecute("UPDATE account SET banned = 1 WHERE username = '%s'", account.c_str());
+
+	WorldSession *session = sWorld.FindSession(sAccountMgr.GetId(args));
 	if (session)
 		session->KickPlayer();
 
@@ -1380,5 +1391,150 @@ bool ChatHandler::HandleBanAccountCommand(const char * args)
 }
 
 bool ChatHandler::HandleIPBanCommand(const char * args)
+{
+	char cIp[200];
+	uint32 duration;
+	int c = sscanf(args, "%s %u", cIp, (unsigned int*)&duration);
+	if (c != 2)
+		return false;
+
+	int o1, o2, o3, o4;
+	if (sscanf(cIp, "%u.%u.%u.%u", &o1, &o2, &o3, &o4))
+	{
+		RedSystemMessage("Invalid IP input.");
+		return true;
+	}
+
+	std::string ip;
+	LoginDatabase.escape_string(ip);
+
+	SystemMessage("SQL Executed: INSERT INTO ip_banned VALUES ('%s',UNIX_TIMESTAMP(),UNIX_TIMESTAMP()+%u,'%s','%s'", ip.c_str(), duration);
+	LoginDatabase.PExecute("INSERT INTO ip_banned VALUES ('%s',UNIX_TIMESTAMP(),UNIX_TIMESTAMP()+%u,'%s','%s'", ip.c_str(), duration);
+	return true;
+}
+
+bool ChatHandler::HandleCreatureSpawnCommand(const char *args)
+{
+	uint32 entry = atol(args);
+	if (entry == 0)
+		return false;
+
+	CreatureInfo const* info = ObjectMgr::GetCreatureTemplate(entry);
+	if (!info)
+	{
+		RedSystemMessage("Invalid entry id.");
+		return true;
+	}
+
+	Player* chr = m_session->GetPlayer();
+	CreatureCreatePos pos(chr, chr->GetOrientation());
+	Map* map = chr->GetMap();
+
+	Creature* pCreature = new Creature;
+
+	uint32 lowguid = sObjectMgr.GenerateStaticCreatureLowGuid();
+	if (!lowguid)
+	{
+		delete pCreature;
+		return true;
+	}
+
+	if (!pCreature->Create(lowguid, pos, info))
+	{
+		delete pCreature;
+		return true;
+	}
+
+	BlueSystemMessage("Spawned a creature `%s` with entry %u at %f %f %f on map %u", info->Name,
+		entry, chr->GetPositionX(), chr->GetPositionY(), chr->GetPositionZ, chr->GetMapId());
+
+	pCreature->SaveToDB(map->GetId(), (1 << map->GetSpawnMode()), chr->GetPhaseMaskForSpawn());
+
+	uint32 db_guid = pCreature->GetGUIDLow();
+
+	pCreature->LoadFromDB(db_guid, map);
+	return true;
+}
+
+bool ChatHandler::HandleRemoveItemCommand(const char * args)
+{
+	uint32 item_id;
+	int32 count, ocount;
+	int argc = sscanf(args, "%u %u", (unsigned int*)&item_id, (unsigned int*)&count);
+	if (argc == 1)
+		count = 1;
+	else if (argc != 2 || !count)
+		return false;
+
+	ocount = count;
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	player->DestroyItemCount(item_id, count, true, false);
+	BlueSystemMessage("Removing %u copies of item %u from %s's inventory.", ocount, item_id, player->GetName());
+	ChatHandler(player).BlueSystemMessage("%s removed %u copies of item %u from your inventory.", m_session->GetPlayer()->GetName(), ocount, item_id);
+	return true;
+}
+
+bool ChatHandler::HandleForceRenameCommand(const char * args)
+{
+	// prevent buffer overflow
+	if (strlen(args) > 100)
+		return false;
+
+	ObjectGuid guid = sObjectMgr.GetPlayerGuidByName(args);
+	if (!guid)
+	{
+		RedSystemMessage("Player with that name not found.");
+		return true;
+	}
+
+	Player *player = sObjectMgr.GetPlayer(args);
+	if (!player)
+		CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '1' WHERE guid = '%u'", guid.GetCounter());
+	else
+	{
+		player->SetAtLoginFlag(AT_LOGIN_RENAME);
+		CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '1' WHERE guid = '%u'", player->GetGUIDLow());
+	}
+
+	GreenSystemMessage("Forcing %s to rename his character next logon.", args);
+	return true;
+}
+
+bool ChatHandler::HandleGetStandingCommand(const char * args)
+{
+	uint32 faction = atoi(args);
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;
+
+	int32 standing = player->GetReputationRank(faction);
+	int32 bstanding = player->GetReputationBaseRank(faction);
+
+	GreenSystemMessage("Reputation for faction %u:", faction);
+	SystemMessage("   Base Standing: %d", bstanding);
+	BlueSystemMessage("   Standing: %d", standing);
+	return true;
+}
+
+bool ChatHandler::HandleSetStandingCommand(const char * args)
+{
+	uint32 faction;
+	int32 standing;
+	if (sscanf(args, "%u %d", (unsigned int*)&faction, (unsigned int*)&standing) != 2)
+		return false;
+	Player * player = getSelectedPlayer();
+	if (!player)
+		return true;;
+
+	BlueSystemMessage("Setting standing of %u to %d on %s.", faction, standing, player->GetName());
+	player->SetReputationRank(faction, standing);
+	ChatHandler(player).GreenSystemMessage("%s set your standing of faction %u to %d.", m_session->GetPlayer()->GetName(), faction, standing);
+	return true;
+}
+
+bool ChatHandler::HandleLookupItemCommand(const char * args)
 {
 }

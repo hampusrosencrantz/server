@@ -6528,6 +6528,18 @@ ReputationRank Player::GetReputationRank(uint32 faction) const
     return GetReputationMgr().GetRank(factionEntry);
 }
 
+ReputationRank Player::GetReputationBaseRank(uint32 faction) const
+{
+	FactionEntry const* factionEntry = sFactionStore.LookupEntry(faction);
+	return GetReputationMgr().GetBaseRank(factionEntry);
+}
+
+void Player::SetReputationRank(uint32 faction, int32 value)
+{
+	FactionEntry const* factionEntry = sFactionStore.LookupEntry(faction);
+	GetReputationMgr().SetReputation(factionEntry, value);
+}
+
 // Calculate total reputation percent player gain with quest/creature level
 int32 Player::CalculateReputationGain(ReputationSource source, int32 rep, int32 faction, uint32 creatureOrQuestLevel, bool noAuraBonus) const
 {
