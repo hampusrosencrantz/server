@@ -716,6 +716,10 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
         return;
     }
 
+	if (player->GetSession()->GetSecurity() > SEC_PLAYER)
+		ChatHandler(player).BlueSystemMessage("[%sSystem%s] |rEntered areatrigger: %s%u.", MSG_COLOR_WHITE, MSG_COLOR_LIGHTBLUE,
+			MSG_COLOR_SUBWHITE, atEntry);
+
     if (sScriptDevAIMgr.OnAreaTrigger(player, atEntry))
         return;
 
