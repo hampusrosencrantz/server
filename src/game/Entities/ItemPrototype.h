@@ -663,6 +663,8 @@ struct ItemPrototype
     uint32 MaxMoneyLoot;
     uint32 ExtraFlags;                                      // see ItemExtraFlags
 
+	std::string lowercase_name;
+
     // helpers
     bool CanChangeEquipStateInCombat() const
     {

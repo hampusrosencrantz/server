@@ -159,6 +159,8 @@ struct CreatureInfo
     char const* AIName;
     uint32  ScriptID;
 
+	std::string lowercase_name;
+
     // helpers
     HighGuid GetHighGuid() const
     {

@@ -42,6 +42,14 @@ class ArenaTeam;
 class Item;
 class SQLStorage;
 
+inline bool FindXinYString(const std::string& x, const std::string& y)
+{
+	if (y.find(x) == std::string::npos)
+		return false;
+
+	return true;
+}
+
 struct GameTele
 {
     float  position_x;

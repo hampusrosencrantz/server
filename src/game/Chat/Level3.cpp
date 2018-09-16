@@ -1535,6 +1535,104 @@ bool ChatHandler::HandleSetStandingCommand(const char * args)
 	return true;
 }
 
+void SendHighlightedName(WorldSession * m_session, char* full_name, const std::string& lowercase_name, std::string& highlight, uint32 id, bool item)
+{
+	char message[1024];
+	char start[50];
+	start[0] = message[0] = 0;
+
+	snprintf(start, 50, "%s %u: %s", item ? "Item" : "Creature", (unsigned int)id, MSG_COLOR_WHITE);
+
+	std::string::size_type hlen = highlight.length();
+	std::string fullname = std::string(full_name);
+	std::string::size_type offset = lowercase_name.find(highlight);
+	std::string::size_type remaining = fullname.size() - offset - hlen;
+	strcat(message, start);
+	strncat(message, fullname.c_str(), offset);
+	if (remaining > 0)
+	{
+		strcat(message, MSG_COLOR_LIGHTRED);
+		strncat(message, (fullname.c_str() + offset), hlen);
+		strcat(message, MSG_COLOR_WHITE);
+		strncat(message, (fullname.c_str() + offset + hlen), remaining);
+	}
+
+	ChatHandler(m_session->GetPlayer()).SystemMessage(message);
+}
+
 bool ChatHandler::HandleLookupItemCommand(const char * args)
 {
+	if (!*args) return false;
+
+	std::string x = std::string(args);
+	transform(x.begin(), x.end(), x.begin(), towlower);
+	if (x.length() < 4)
+	{
+		RedSystemMessage("Your search string must be at least 5 characters long.");
+		return true;
+	}
+
+	BlueSystemMessage("Starting search of item `%s`...", x.c_str());
+
+	uint32 t = WorldTimer::getMSTime();
+	uint32 count = 0;
+
+	for (uint32 id = 0; id < sItemStorage.GetMaxEntry(); ++id)
+	{
+		ItemPrototype const* pProto = sItemStorage.LookupEntry<ItemPrototype>(id);
+		if (!pProto)
+			continue;
+
+		if (FindXinYString(x, pProto->lowercase_name))
+		{
+			SendHighlightedName(m_session, pProto->Name1, pProto->lowercase_name, x, pProto->ItemId, true);
+			++count;
+			if (count == 25)
+			{
+				RedSystemMessage("More than 25 results returned. aborting.");
+				break;
+			}
+		}
+	}
+
+	BlueSystemMessage("Search completed in %u ms.", WorldTimer::getMSTime() - t);
+	return true;
+}
+
+bool ChatHandler::HandleLookupCreatureCommand(const char * args)
+{
+	if (!*args) return false;
+
+	std::string x = std::string(args);
+	transform(x.begin(), x.end(), x.begin(), towlower);
+	if (x.length() < 4)
+	{
+		RedSystemMessage("Your search string must be at least 5 characters long.");
+		return true;
+	}
+
+	GreenSystemMessage("Starting search of creature `%s`...", x.c_str());
+	uint32 t = WorldTimer::getMSTime();
+	uint32 count = 0;
+
+	for (uint32 id = 0; id < sCreatureStorage.GetMaxEntry(); ++id)
+	{
+		CreatureInfo const* cInfo = sCreatureStorage.LookupEntry<CreatureInfo>(id);
+		if (!cInfo)
+			continue;
+
+		if (FindXinYString(x, cInfo->lowercase_name))
+		{
+			SendHighlightedName(m_session, cInfo->Name, cInfo->lowercase_name, x, cInfo->Entry, false);
+			++count;
+			if (count == 25)
+			{
+				RedSystemMessage("More than 25 results returned. aborting.");
+				break;
+			}
+		}
+	}
+
+	GreenSystemMessage("Search completed in %u ms.", WorldTimer::getMSTime() - t);
+	return true;
 }

@@ -739,6 +739,11 @@ void ObjectMgr::LoadCreatureTemplates()
             else
                 const_cast<CreatureInfo*>(cInfo)->Scale = DEFAULT_OBJECT_SCALE;
         }
+
+		// lowercase name, used for searches
+		const_cast<CreatureInfo*>(cInfo)->lowercase_name = const_cast<CreatureInfo*>(cInfo)->Name;
+		for (uint32 j = 0; j < const_cast<CreatureInfo*>(cInfo)->lowercase_name.length(); ++j)
+			const_cast<CreatureInfo*>(cInfo)->lowercase_name[j] = tolower(const_cast<CreatureInfo*>(cInfo)->lowercase_name[j]);
     }
 
     sLog.outString(">> Loaded %u creature definitions", sCreatureStorage.GetRecordCount());
@@ -2501,6 +2506,11 @@ void ObjectMgr::LoadItemPrototypes()
                 }
             }
         }
+
+		// lowercase name, used for searches
+		const_cast<ItemPrototype*>(proto)->lowercase_name = const_cast<ItemPrototype*>(proto)->Name1;
+		for (uint32 j = 0; j < const_cast<ItemPrototype*>(proto)->lowercase_name.length(); ++j)
+			const_cast<ItemPrototype*>(proto)->lowercase_name[j] = tolower(const_cast<ItemPrototype*>(proto)->lowercase_name[j]);
     }
 
     // check some dbc referenced items (avoid duplicate reports)
