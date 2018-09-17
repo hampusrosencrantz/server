@@ -2407,6 +2407,8 @@ class Unit : public WorldObject
         virtual CreatureAI* AI() { return nullptr; }
         virtual CombatData* GetCombatData() { return m_combatData; }
 
+		bool bInvincible;
+
     protected:
         explicit Unit();
 

@@ -329,6 +329,8 @@ Unit::Unit() :
 
     m_baseSpeedWalk = 1.f;
     m_baseSpeedRun = 1.f;
+
+	bInvincible = false;
 }
 
 Unit::~Unit()
@@ -6653,10 +6655,9 @@ bool Unit::Attack(Unit* victim, bool meleeAttack)
     if (GetTypeId() == TYPEID_PLAYER && IsMounted())
         return false;
 
-    // nobody can attack GM in GM-mode
     if (victim->GetTypeId() == TYPEID_PLAYER)
     {
-        if (((Player*)victim)->isGameMaster())
+        if (((Player*)victim->bInvincible))
             return false;
     }
     else

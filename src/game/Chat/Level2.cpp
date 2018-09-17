@@ -17,4 +17,16 @@ bool ChatHandler::HandleResetReputationCommand(const char *args)
 
 bool ChatHandler::HandleInvincibleCommand(const char *args)
 {
+	Player *target = getSelectedPlayer();
+	char msg[100];
+	if (target)
+	{
+		target->bInvincible = !target->bInvincible;
+		snprintf(msg, 100, "Invincibility is now %s", target->bInvincible ? "ON. You may have to leave and re-enter this zone for changes to take effect." : "OFF. Exit and re-enter this zone for this change to take effect.");
+	}
+	else {
+		snprintf(msg, 100, "Select a player or yourself first.");
+	}
+	SystemMessage(msg);
+	return true;
 }
